@@ -1,0 +1,11 @@
+Gujarat Crop Yield Model – Training Report
+=============================================
+
+MODEL: RandomForest (central prediction)
+  MAE  : 4.0845 tonnes/ha
+  RMSE : 8.662 tonnes/ha
+  R²   : 0.506
+
+QUANTILE INTERVAL [10th – 90th percentile]
+  Coverage  : 70.3% actual yields inside band
+  Avg width : 6.5679 tonnes/ha

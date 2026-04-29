@@ -1,0 +1,11 @@
+Gujarat Crop Yield Model – Training Report
+=============================================
+
+MODEL: HistGradientBoosting (central prediction)
+  MAE  : 0.693 tonnes/ha
+  RMSE : 1.9888 tonnes/ha
+  R²   : 0.974
+
+QUANTILE INTERVAL [10th – 90th percentile]
+  Coverage  : 65.9% actual yields inside band
+  Avg width : 3.937 tonnes/ha
