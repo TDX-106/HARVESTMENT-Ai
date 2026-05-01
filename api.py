@@ -12,14 +12,24 @@ Endpoints:
 """
 
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
+from time import time
+from collections import defaultdict
 
 from predictor import YieldPredictor
 from weather_service import get_live_weather, merge_weather_with_historical
 from financials import calculate_financials
+
+# Optional convenience for local dev when a .env exists
+try:
+    from dotenv import load_dotenv  # type: ignore
+
+    load_dotenv()
+except Exception:
+    pass
 
 # ─────────────────────────────────────────────────────────────────────────────
 # APP INIT
@@ -37,10 +47,17 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Allow frontend (plain HTML file or any dev server) to call this API
+def _read_allowed_origins() -> list[str]:
+    raw = (os.environ.get("ALLOWED_ORIGINS") or "").strip()
+    if not raw:
+        return ["http://localhost:8000", "http://127.0.0.1:8000"]
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+# Allow frontend to call this API (restrict via ALLOWED_ORIGINS in production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_read_allowed_origins(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -249,6 +266,14 @@ from fastapi.responses import FileResponse
 @app.get("/", include_in_schema=False)
 def serve_index():
     return FileResponse(os.path.join("frontend", "index.html"))
+
+@app.get("/advisory", include_in_schema=False)
+def serve_advisory():
+    return FileResponse(os.path.join("frontend", "advisory.html"))
+
+@app.get("/dashboard", include_in_schema=False)
+def serve_dashboard():
+    return FileResponse(os.path.join("frontend", "dashboard.html"))
 
 app.mount("/", StaticFiles(directory="frontend"), name="frontend")
 
