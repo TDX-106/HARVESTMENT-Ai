@@ -6,7 +6,7 @@
     <title>Harvestment | Dashboard</title>
     <meta name="description" content="Harvestment dashboard showing yield prediction, financial advisory, scenarios, weather and breakeven analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=2">
+    <link rel="stylesheet" href="/styles.css?v=3">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -31,6 +31,7 @@
             <li><a href="/" class="nav-link" id="nav-home">Home</a></li>
             <li><a href="/advisory" class="nav-link" id="nav-advisory">Advisory</a></li>
             <li><a href="/dashboard" class="nav-link" id="nav-dashboard">Dashboard</a></li>
+            <li><a href="/crops" class="nav-link" id="nav-crops">Crop Guide</a></li>
         </ul>
         <div class="nav-model-badge" id="nav-accuracy-badge" title="Model Accuracy">
             <span class="badge-dot"></span>
@@ -141,30 +142,39 @@
     </section>
 
     <footer class="site-footer">
-        <div class="footer-inner">
-            <!-- <div class="footer-brand"> -->
-                <div class="footer-logo">
-                    <span class="logo-icon">🌾</span>
-                    <span class="logo-text">Harvestment</span>
-                    <span class="logo-badge">Gujarat AI</span>
+        <div class="footer-main">
+            <div class="footer-col">
+                <div class="footer-logo"><span class="logo-icon">🌾</span><span class="logo-text">Harvestment</span><span class="logo-badge">Gujarat AI</span></div>
+                <p class="footer-brand-tagline">Harvestment: An Intelligent Agricultural Forecasting System for Gujarat's Small-Scale Farmers</p>
+                <span class="footer-project-badge">🎓 Final Year Project · 2025</span>
+                <div class="footer-about-box" style="margin-top:14px;"><strong>Reading results:</strong> Confidence reflects prediction band width. Wider band = higher uncertainty. Breakeven shows the minimum yield to cover all costs.</div>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <div class="footer-nav-links">
+                    <a href="/">🏠 Home</a>
+                    <a href="/advisory">📋 Get Advisory</a>
+                    <a href="/dashboard">📊 Dashboard</a>
+                    <a href="/crops">🌱 Crop Guide</a>
                 </div>
-                <p class="footer-tagline">
-                    Your last advisory is saved in this browser session. Run a new prediction anytime from <strong>Advisory</strong>.
-                </p>
-                <div class="footer-about">
-                    <div class="footer-about-title">Reading your dashboard</div>
-                    <p><strong>Confidence</strong> comes from the prediction band width (min–max). A wider band means higher uncertainty.</p>
-                    <p><strong>Breakeven</strong> shows the minimum yield needed to cover costs at the assumed market price.</p>
-                </div>
-            <!-- </div> -->
-            <!-- <div class="footer-links">
-                <a class="footer-link" href="/advisory">Run New Advisory</a>
-                <a class="footer-link" href="/">Home</a>
-            </div> -->
+            </div>
+            <div class="footer-col">
+                <h4>About the Team</h4>
+                <div class="team-card"><div class="team-avatar">TD</div><div><div class="team-name">Tanmay Dighade</div><div class="team-email"><a href="mailto:yoginitanmay3641@gmail.com">yoginitanmay3641@gmail.com</a></div></div></div>
+                <div class="team-card"><div class="team-avatar">SV</div><div><div class="team-name">Suhani Vaghela</div><div class="team-email"><a href="mailto:suhanivaghela005@gmail.com">suhanivaghela005@gmail.com</a></div></div></div>
+            </div>
+            <div class="footer-col">
+                <h4>Academic Info</h4>
+                <div class="footer-acad-item"><span class="footer-acad-icon">🏛️</span><span>Gandhinagar Institute of Technology</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon">🎓</span><span>Gandhinagar University</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon">📘</span><span>Final Year B.Tech Project</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon">💻</span><span>Computer Science &amp; Engineering</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon">🗓️</span><span>Academic Year 2022–2026</span></div>
+            </div>
         </div>
         <div class="footer-meta">
-            <span>© <span id="footer-year"></span> Harvestment</span>
-            <span>Model output depends on inputs & weather feed</span>
+            <span>© <span id="footer-year"></span> Harvestment · Tanmay Dighade &amp; Suhani Vaghela · GIT, Gandhinagar University</span>
+            <span>Predictions are estimates · Always verify on-field</span>
         </div>
     </footer>
 

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvestment | Crop Guide — Gujarat</title>
+    <meta name="description" content="Comprehensive crop guide for Gujarat farmers — soil compatibility, seasons, water needs, and top districts for all 29 crops.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v=3">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+        <div class="logo">
+            <span class="logo-icon">🌾</span>
+            <span class="logo-text">Harvestment</span>
+            <span class="logo-badge">Gujarat AI</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="/" class="nav-link" id="nav-home">Home</a></li>
+            <li><a href="/advisory" class="nav-link" id="nav-advisory">Advisory</a></li>
+            <li><a href="/dashboard" class="nav-link" id="nav-dashboard">Dashboard</a></li>
+            <li><a href="/crops" class="nav-link" id="nav-crops">Crop Guide</a></li>
+        </ul>
+        <div class="nav-model-badge" id="nav-accuracy-badge" title="Model Accuracy">
+            <span class="badge-dot"></span>
+            <span id="nav-r2">R² —</span>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="crops-hero">
+        <div class="section-tag">Gujarat Crop Intelligence</div>
+        <h1>🌱 Crop Guide</h1>
+        <p>Discover which crops thrive in which soil, season, and district across Gujarat — with farming tips for each.</p>
+    </section>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar" id="filter-bar" style="margin-top:32px;">
+        <input class="crop-search" id="crop-search" type="text" placeholder="🔍 Search crop name…">
+        <span class="filter-label">Season:</span>
+        <div class="filter-group" id="season-filters">
+            <button class="filter-btn active" data-season="all">All</button>
+            <button class="filter-btn" data-season="Kharif">☀️ Kharif</button>
+            <button class="filter-btn" data-season="Rabi">❄️ Rabi</button>
+            <button class="filter-btn" data-season="Other">🌿 Other</button>
+        </div>
+        <span class="filter-label" style="margin-left:8px;">Soil:</span>
+        <div class="filter-group" id="soil-filters">
+            <button class="filter-btn active" data-soil="all">All</button>
+            <button class="filter-btn" data-soil="Black">⚫ Black</button>
+            <button class="filter-btn" data-soil="Alluvial">🟤 Alluvial</button>
+            <button class="filter-btn" data-soil="Red">🔴 Red</button>
+            <button class="filter-btn" data-soil="Desert">🟡 Desert</button>
+            <button class="filter-btn" data-soil="Laterite">🟠 Laterite</button>
+        </div>
+    </div>
+
+    <!-- Crop Grid -->
+    <div class="crops-grid" id="crops-grid"></div>
+    <p class="no-results" id="no-results">No crops match your filters. Try changing the season or soil type.</p>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-main">
+            <div class="footer-col">
+                <div class="footer-logo"><span class="logo-icon">🌾</span><span class="logo-text">Harvestment</span><span class="logo-badge">Gujarat AI</span></div>
+                <p class="footer-brand-tagline">Harvestment: An Intelligent Agricultural Forecasting System for Gujarat's Small-Scale Farmers</p>
+                <span class="footer-project-badge">🎓 Final Year Project · 2025</span>
+                <div class="footer-about-box" style="margin-top:14px;"><strong>Disclaimer:</strong> Crop data is based on Gujarat agricultural reports and IMD data. Always consult a local agronomist for field-specific advice.</div>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <div class="footer-nav-links">
+                    <a href="/">🏠 Home</a>
+                    <a href="/advisory">📋 Get Advisory</a>
+                    <a href="/dashboard">📊 Dashboard</a>
+                    <a href="/crops">🌱 Crop Guide</a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h4>About the Team</h4>
+                <div class="team-card"><div class="team-avatar">TD</div><div><div class="team-name">Tanmay Dighade</div><div class="team-email"><a href="mailto:yoginitanmay3641@gmail.com">yoginitanmay3641@gmail.com</a></div></div></div>
+                <div class="team-card"><div class="team-avatar">SV</div><div><div class="team-name">Suhani Vaghela</div><div class="team-email"><a href="mailto:suhanivaghela005@gmail.com">suhanivaghela005@gmail.com</a></div></div></div>
+            </div>
+            <div class="footer-col">
+                <h4>Academic Info</h4>
+                <div class="footer-acad-item"><span class="footer-acad-icon">🏛️</span><span>Gandhinagar Institute of Technology</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon">🎓</span><span>Gandhinagar University</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon">📘</span><span>Final Year B.Tech Project</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon">💻</span><span>Computer Science &amp; Engineering</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon">🗓️</span><span>Academic Year 2022–2026</span></div>
+            </div>
+        </div>
+        <div class="footer-meta">
+            <span>© <span id="footer-year"></span> Harvestment · Tanmay Dighade &amp; Suhani Vaghela · GIT, Gandhinagar University</span>
+            <span>Data based on Gujarat agricultural reports</span>
+        </div>
+    </footer>
+
+<script src="app.js"></script>
+<script>
+document.getElementById('footer-year')?.append(new Date().getFullYear());
+
+// ── CROP DATA ─────────────────────────────────────────────
+const CROPS = [
+  { name:"Groundnut", emoji:"🥜", avgYield:"2.06 t/ha", seasons:["Kharif"], soils:["Black","Red","Alluvial"], water:2,
+    districts:["Rajkot","Junagadh","Amreli","Bhavnagar","Jamnagar"],
+    desc:"Gujarat's most important oilseed. Thrives in well-drained red and black soils during the monsoon season.",
+    tips:["Needs well-drained soil — avoid waterlogging","Ideal temperature 25–30°C","Inoculate seeds with Rhizobium before sowing"] },
+
+  { name:"Cotton (lint)", emoji:"🌿", avgYield:"3.32 t/ha", seasons:["Kharif"], soils:["Black","Alluvial"], water:2,
+    districts:["Surat","Bharuch","Vadodara","Anand","Kheda"],
+    desc:"Major cash crop of Gujarat. Deep black cotton soil is ideal — moisture-retentive and nutrient-rich.",
+    tips:["Deep black soil preferred","Drip irrigation boosts yield by ~30%","Monitor for bollworm pests"] },
+
+  { name:"Wheat", emoji:"🌾", avgYield:"2.97 t/ha", seasons:["Rabi"], soils:["Alluvial","Black"], water:2,
+    districts:["Gandhinagar","Anand","Kheda","Mehsana","Patan"],
+    desc:"Key Rabi staple crop. Grows best in fertile alluvial and black soils with cool, dry winters.",
+    tips:["Sow November–December","3–4 irrigations are ideal","Short-duration varieties for late sowing"] },
+
+  { name:"Rice", emoji:"🍚", avgYield:"2.33 t/ha", seasons:["Kharif"], soils:["Alluvial","Black"], water:4,
+    districts:["Navsari","Surat","Valsad","Tapi","Dang"],
+    desc:"Grown in high-rainfall coastal and tribal belt. Requires waterlogged or flooded soil conditions.",
+    tips:["Requires >1000mm annual rainfall","Transplanting method preferred","Watch for blast and stem borer"] },
+
+  { name:"Bajra", emoji:"🌾", avgYield:"2.20 t/ha", seasons:["Kharif"], soils:["Desert","Red","Black"], water:1,
+    districts:["Banaskantha","Patan","Mehsana","Sabarkantha","Kutch"],
+    desc:"Drought-tolerant pearl millet. Thrives in dry arid regions with sandy to red soils and low rainfall.",
+    tips:["Extremely drought tolerant","Low input requirements","Grows even in saline soils"] },
+
+  { name:"Sugarcane", emoji:"🎋", avgYield:"65.69 t/ha", seasons:["Other"], soils:["Alluvial","Black"], water:4,
+    districts:["Surat","Bharuch","Vadodara","Anand","Navsari"],
+    desc:"High-biomass perennial cash crop. Grows year-round in fertile alluvial river plains of south Gujarat.",
+    tips:["Requires 12–16 irrigations per year","Ratoon cropping saves planting cost","Best near river plains"] },
+
+  { name:"Maize", emoji:"🌽", avgYield:"2.07 t/ha", seasons:["Kharif","Rabi"], soils:["Red","Alluvial","Black"], water:2,
+    districts:["Panchmahal","Dahod","Chhota Udaipur","Narmada","Valsad"],
+    desc:"Versatile crop grown in tribal and hilly districts of east Gujarat. Adapts to a wide range of soils.",
+    tips:["Grows well in tribal belt","Deep tillage improves yield","Inter-cropping with pulses works well"] },
+
+  { name:"Castor seed", emoji:"🌱", avgYield:"2.04 t/ha", seasons:["Kharif"], soils:["Red","Black","Alluvial"], water:1,
+    districts:["Mehsana","Banaskantha","Patan","Sabarkantha","Gandhinagar"],
+    desc:"India's largest castor producer — North Gujarat leads. Tolerates drought and requires moderate rainfall.",
+    tips:["Well-drained soils essential","Tolerates mild drought periods","Seed oil has major industrial uses"] },
+
+  { name:"Jowar", emoji:"🌾", avgYield:"1.36 t/ha", seasons:["Kharif","Rabi"], soils:["Black","Red"], water:1,
+    districts:["Amreli","Bhavnagar","Junagadh","Gir Somnath","Rajkot"],
+    desc:"Drought-tolerant sorghum grown in Saurashtra. Excellent as both food grain and cattle fodder crop.",
+    tips:["Grows in shallow to medium black soil","Dual purpose: grain and fodder","Heat and drought tolerant"] },
+
+  { name:"Arhar / Tur", emoji:"🫘", avgYield:"1.20 t/ha", seasons:["Kharif"], soils:["Red","Black","Alluvial"], water:2,
+    districts:["Vadodara","Anand","Kheda","Bharuch","Narmada"],
+    desc:"Pigeon pea — popular pulse crop. Nitrogen-fixing legume that naturally improves soil health.",
+    tips:["Fixes atmospheric nitrogen","Can grow on relatively poor soils","Intercrop with cotton for efficiency"] },
+
+  { name:"Moong (Green Gram)", emoji:"🫘", avgYield:"0.74 t/ha", seasons:["Kharif","Rabi"], soils:["Alluvial","Red","Black"], water:1,
+    districts:["Banaskantha","Mehsana","Patan","Gandhinagar","Anand"],
+    desc:"Short-duration pulse. Excellent for crop rotation due to fast maturity and nitrogen-fixing ability.",
+    tips:["Short duration: 60–65 days","Ideal for crop rotation","Very low water requirement"] },
+
+  { name:"Banana", emoji:"🍌", avgYield:"77.06 t/ha", seasons:["Other"], soils:["Alluvial","Black"], water:3,
+    districts:["Anand","Kheda","Vadodara","Surat","Bharuch"],
+    desc:"Gujarat is a top banana-producing state. Rich alluvial soils of Central Gujarat are ideal.",
+    tips:["Drip irrigation highly recommended","Tissue culture plants are preferred","Needs windbreaks for protection"] },
+
+  { name:"Onion", emoji:"🧅", avgYield:"27.60 t/ha", seasons:["Rabi"], soils:["Alluvial","Red","Black"], water:2,
+    districts:["Bhavnagar","Rajkot","Surendranagar","Amreli","Junagadh"],
+    desc:"Important vegetable cash crop of Saurashtra. Shallow roots need frequent but light irrigation.",
+    tips:["Sandy loam or alluvial is best","5–6 irrigations needed","Harvest when tops fall over naturally"] },
+
+  { name:"Potato", emoji:"🥔", avgYield:"27.46 t/ha", seasons:["Rabi"], soils:["Alluvial","Red"], water:2,
+    districts:["Mehsana","Gandhinagar","Anand","Kheda","Banaskantha"],
+    desc:"Cool-season vegetable crop. North Gujarat alluvial plains are ideal due to well-drained sandy soils.",
+    tips:["Loamy soils with good drainage ideal","Plant November–December","Disease-free seed tubers essential"] },
+
+  { name:"Garlic", emoji:"🧄", avgYield:"6.39 t/ha", seasons:["Rabi"], soils:["Alluvial","Black","Red"], water:2,
+    districts:["Rajkot","Junagadh","Amreli","Bhavnagar","Surendranagar"],
+    desc:"Gujarat is a major garlic producer. Alluvial and light black soils with cool winters are ideal.",
+    tips:["Plant October–November","6–8 irrigations needed","Lift when 50% of leaves turn yellow"] },
+
+  { name:"Gram", emoji:"🫘", avgYield:"1.26 t/ha", seasons:["Rabi"], soils:["Black","Alluvial","Red"], water:1,
+    districts:["Banaskantha","Patan","Mehsana","Gandhinagar","Anand"],
+    desc:"Most important Rabi pulse. Well-adapted to dry winter conditions with very limited irrigation.",
+    tips:["Grows on residual soil moisture","Only 1–2 irrigations required","Use wilt-resistant varieties"] },
+
+  { name:"Guar seed", emoji:"🌿", avgYield:"0.69 t/ha", seasons:["Kharif"], soils:["Desert","Red","Alluvial"], water:1,
+    districts:["Banaskantha","Kutch","Patan","Mehsana","Surendranagar"],
+    desc:"Extremely drought-tolerant legume for arid zones. Seed gum has major industrial and food uses.",
+    tips:["Grows in 200–400mm rainfall","Tolerates saline and alkaline soils","Key crop for Kutch and north Gujarat"] },
+
+  { name:"Soyabean", emoji:"🫘", avgYield:"1.24 t/ha", seasons:["Kharif"], soils:["Black","Red","Alluvial"], water:2,
+    districts:["Vadodara","Bharuch","Narmada","Panchmahal","Dahod"],
+    desc:"Rising oilseed crop in south and central Gujarat. Grows in black and red soils with moderate rainfall.",
+    tips:["Requires 600–700mm rainfall","Sensitive to waterlogging","Inoculate seeds with Rhizobium"] },
+
+  { name:"Rapeseed & Mustard", emoji:"🌼", avgYield:"1.77 t/ha", seasons:["Rabi"], soils:["Alluvial","Black","Red"], water:1,
+    districts:["Banaskantha","Mehsana","Patan","Gandhinagar","Sabarkantha"],
+    desc:"Major oilseed Rabi crop in North Gujarat alluvial plains. Adapted to cool, dry winters.",
+    tips:["Sow October–November","Only 2–3 irrigations sufficient","Short-duration varieties for late sowing"] },
+
+  { name:"Sesamum", emoji:"🌿", avgYield:"0.59 t/ha", seasons:["Kharif"], soils:["Red","Alluvial","Black"], water:1,
+    districts:["Junagadh","Amreli","Bhavnagar","Rajkot","Gir Somnath"],
+    desc:"Ancient oilseed crop grown in Saurashtra. Tolerates drought and grows in light-textured soils.",
+    tips:["Drought tolerant","Light sandy or red soils preferred","Avoid waterlogged conditions"] },
+
+  { name:"Dry Chillies", emoji:"🌶️", avgYield:"1.20 t/ha", seasons:["Kharif","Rabi"], soils:["Alluvial","Red","Black"], water:2,
+    districts:["Kheda","Anand","Vadodara","Mehsana","Gandhinagar"],
+    desc:"Gujarat is a significant chilli-producing state. Warm climate and well-drained fertile soils required.",
+    tips:["Well-drained loamy soil ideal","5–7 irrigations needed","Mulching reduces soil water loss"] },
+
+  { name:"Tobacco", emoji:"🍂", avgYield:"2.43 t/ha", seasons:["Other"], soils:["Alluvial","Red"], water:2,
+    districts:["Anand","Kheda","Vadodara","Mehsana","Gandhinagar"],
+    desc:"The Anand-Kheda belt is India's key tobacco growing region. Sandy loam alluvial soils are ideal.",
+    tips:["Well-drained sandy loam soil ideal","Light and frequent irrigation","Careful curing and grading of leaf"] },
+
+  { name:"Ragi", emoji:"🌾", avgYield:"0.90 t/ha", seasons:["Kharif"], soils:["Red","Laterite"], water:1,
+    districts:["Chhota Udaipur","Panchmahal","Dahod","Narmada","Dang"],
+    desc:"Nutritious finger millet grown in tribal hilly districts of east Gujarat on poor laterite and red soils.",
+    tips:["Grows on poor red and laterite soils","Extremely nutritious — rich in calcium","Low input crop for tribal farmers"] },
+
+  { name:"Urad", emoji:"🫘", avgYield:"0.84 t/ha", seasons:["Kharif"], soils:["Alluvial","Black","Red"], water:1,
+    districts:["Vadodara","Anand","Kheda","Bharuch","Surat"],
+    desc:"Black gram — short-duration pulse. Suitable for intercropping and crop rotation in central Gujarat.",
+    tips:["50–65 day crop","Naturally improves soil nitrogen","Avoid heavy clay soils"] },
+
+  { name:"Moth Bean", emoji:"🌿", avgYield:"0.41 t/ha", seasons:["Kharif"], soils:["Desert","Red"], water:1,
+    districts:["Kutch","Banaskantha","Patan","Mehsana","Surendranagar"],
+    desc:"Ultra-drought-tolerant pulse grown in the driest parts — Kutch and North Gujarat desert belt.",
+    tips:["Survives on 150–300mm rainfall","Grows in sandy desert soils","Important food security crop for Kutch"] },
+
+  { name:"Small Millets", emoji:"🌾", avgYield:"1.46 t/ha", seasons:["Kharif"], soils:["Red","Laterite","Black"], water:1,
+    districts:["Chhota Udaipur","Dahod","Panchmahal","Narmada","Dang"],
+    desc:"Group of minor millets (Kodra, Sama, etc.) grown in tribal hilly areas. Great for dryland farming.",
+    tips:["Grows on poor thin soils","Very low input crop","Rich in iron and nutritionally dense"] },
+
+  { name:"Other Kharif Pulses", emoji:"🫘", avgYield:"0.61 t/ha", seasons:["Kharif"], soils:["Alluvial","Red","Black"], water:1,
+    districts:["Vadodara","Bharuch","Anand","Kheda","Narmada"],
+    desc:"Includes moth bean, cow pea, and other kharif pulses grown across Gujarat in well-drained soils.",
+    tips:["Nitrogen-fixing legumes","Low input requirements","Good for mixed or intercropping"] },
+
+  { name:"Other Rabi Pulses", emoji:"🫘", avgYield:"0.83 t/ha", seasons:["Rabi"], soils:["Black","Alluvial","Red"], water:1,
+    districts:["Banaskantha","Mehsana","Patan","Gandhinagar","Anand"],
+    desc:"Winter pulses like lentil, pea, etc. Adapted to cool, dry conditions with minimal irrigation.",
+    tips:["Residual soil moisture often sufficient","Enrich soil nitrogen","2 irrigations maximum"] },
+
+  { name:"Other Cereals", emoji:"🌾", avgYield:"0.94 t/ha", seasons:["Kharif","Rabi"], soils:["Red","Alluvial","Black","Desert"], water:1,
+    districts:["Banaskantha","Patan","Kutch","Mehsana","Sabarkantha"],
+    desc:"Minor cereal crops including oats, barley, etc. Grown across diverse regions as food or fodder crops.",
+    tips:["Adaptable to various soil types","Low input requirements","Often used as fodder crops in dry areas"] },
+];
+
+// ── WATER LABEL ───────────────────────────────────────────
+const WATER_LABELS = { 1:"Low", 2:"Medium", 3:"High", 4:"Very High" };
+
+// ── FILTERS STATE ─────────────────────────────────────────
+let activeSeason = "all";
+let activeSoil   = "all";
+let searchTerm   = "";
+
+// ── RENDER ────────────────────────────────────────────────
+function renderCrops() {
+    const grid = document.getElementById("crops-grid");
+    const noRes = document.getElementById("no-results");
+
+    const filtered = CROPS.filter(c => {
+        if (activeSeason !== "all" && !c.seasons.includes(activeSeason)) return false;
+        if (activeSoil   !== "all" && !c.soils.includes(activeSoil))     return false;
+        if (searchTerm && !c.name.toLowerCase().includes(searchTerm))     return false;
+        return true;
+    });
+
+    noRes.style.display = filtered.length === 0 ? "block" : "none";
+
+    grid.innerHTML = filtered.map(c => {
+        const seasonBadges = c.seasons.map(s =>
+            `<span class="crop-badge badge-${s.toLowerCase()}">${s === "Other" ? "🌿 Zaid/Other" : s === "Kharif" ? "☀️ Kharif" : "❄️ Rabi"}</span>`
+        ).join("");
+        const soilBadges = c.soils.map(s =>
+            `<span class="crop-badge badge-soil">${s}</span>`
+        ).join("");
+        const waterDots = Array.from({length:4}, (_, i) =>
+            `<div class="water-dot ${i < c.water ? "filled" : ""}"></div>`
+        ).join("");
+        const districtTags = c.districts.map(d =>
+            `<span class="crop-district-tag">${d}</span>`
+        ).join("");
+        const tipsList = c.tips.map(t => `<li>${t}</li>`).join("");
+
+        return `<div class="crop-card">
+            <div class="crop-card-header">
+                <div class="crop-emoji">${c.emoji}</div>
+                <div>
+                    <div class="crop-name">${c.name}</div>
+                    <div class="crop-yield">Avg yield: ${c.avgYield}</div>
+                </div>
+            </div>
+            <div class="crop-badges">${seasonBadges}${soilBadges}</div>
+            <p class="crop-desc">${c.desc}</p>
+            <div class="water-row">
+                <div class="water-dots">${waterDots}</div>
+                <span>Water need: <strong>${WATER_LABELS[c.water]}</strong></span>
+            </div>
+            <div>
+                <div style="font-size:0.75rem;color:var(--gold);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Top Districts</div>
+                <div class="crop-districts-row">${districtTags}</div>
+            </div>
+            <ul class="crop-tips">${tipsList}</ul>
+        </div>`;
+    }).join("");
+}
+
+// ── FILTER WIRING ─────────────────────────────────────────
+document.getElementById("season-filters").addEventListener("click", e => {
+    if (!e.target.dataset.season) return;
+    document.querySelectorAll("[data-season]").forEach(b => b.classList.remove("active"));
+    e.target.classList.add("active");
+    activeSeason = e.target.dataset.season;
+    renderCrops();
+});
+
+document.getElementById("soil-filters").addEventListener("click", e => {
+    if (!e.target.dataset.soil) return;
+    document.querySelectorAll("[data-soil]").forEach(b => b.classList.remove("active"));
+    e.target.classList.add("active");
+    activeSoil = e.target.dataset.soil;
+    renderCrops();
+});
+
+document.getElementById("crop-search").addEventListener("input", e => {
+    searchTerm = e.target.value.trim().toLowerCase();
+    renderCrops();
+});
+
+// Initial render
+renderCrops();
+</script>
+</body>
+</html>

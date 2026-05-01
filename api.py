@@ -215,7 +215,7 @@ def predict(req: PredictRequest):
         live_weather = get_live_weather(req.district)
 
         # 2. Merge with historical baseline → full weather feature set
-        weather_inputs = merge_weather_with_historical(req.district, live_weather)
+        weather_inputs = merge_weather_with_historical(req.district, live_weather, req.season)
 
         # 3. Predict Yield
         result = model.predict(
@@ -274,6 +274,10 @@ def serve_advisory():
 @app.get("/dashboard", include_in_schema=False)
 def serve_dashboard():
     return FileResponse(os.path.join("frontend", "dashboard.html"))
+
+@app.get("/crops", include_in_schema=False)
+def serve_crops():
+    return FileResponse(os.path.join("frontend", "crops.html"))
 
 app.mount("/", StaticFiles(directory="frontend"), name="frontend")
 

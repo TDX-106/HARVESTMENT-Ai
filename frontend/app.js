@@ -11,6 +11,17 @@ let lastData      = null;
 
 const STORAGE_KEY = "harvestment:lastPrediction";
 
+// ── MONTH → SEASON MAPPING ────────────────────────────
+// Kharif: June–October (monsoon sowing)
+// Rabi:   November–March (winter sowing)
+// Other:  April–May (Zaid / summer crops)
+const MONTH_TO_SEASON = {
+    1: "Rabi", 2: "Rabi", 3: "Rabi",
+    4: "Other", 5: "Other",
+    6: "Kharif", 7: "Kharif", 8: "Kharif", 9: "Kharif", 10: "Kharif",
+    11: "Rabi", 12: "Rabi",
+};
+
 // ── INIT ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
     initNavbar();
@@ -28,6 +39,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (predictionForm) {
         loadOptions();
         predictionForm.addEventListener("submit", handleSubmit);
+        initMonthSeasonWiring();
+        initIrrigationCards();
     }
 
     // Dashboard page: render from last prediction
@@ -50,13 +63,49 @@ function initNavbar() {
 
     // Active link highlight for multi-page navigation
     const path = (window.location.pathname || "/").toLowerCase();
-    const navHome = document.getElementById("nav-home");
+    const navHome     = document.getElementById("nav-home");
     const navAdvisory = document.getElementById("nav-advisory");
-    const navDashboard = document.getElementById("nav-dashboard");
-    [navHome, navAdvisory, navDashboard].forEach(el => el && el.classList.remove("active"));
-    if (path.endsWith("/advisory")) navAdvisory?.classList.add("active");
+    const navDashboard= document.getElementById("nav-dashboard");
+    const navCrops    = document.getElementById("nav-crops");
+    [navHome, navAdvisory, navDashboard, navCrops].forEach(el => el && el.classList.remove("active"));
+    if (path.endsWith("/advisory"))       navAdvisory?.classList.add("active");
     else if (path.endsWith("/dashboard")) navDashboard?.classList.add("active");
+    else if (path.endsWith("/crops"))     navCrops?.classList.add("active");
     else navHome?.classList.add("active");
+}
+
+// ── PLANTING MONTH → SEASON AUTO-FILL ────────────────────
+function initMonthSeasonWiring() {
+    const monthSel  = document.getElementById("planting_month");
+    const seasonSel = document.getElementById("season");
+    if (!monthSel || !seasonSel) return;
+
+    monthSel.addEventListener("change", () => {
+        const month = parseInt(monthSel.value, 10);
+        const suggested = MONTH_TO_SEASON[month] || "";
+
+        // Rebuild season options with the suggested one pre-selected
+        const seasons = ["Kharif", "Rabi", "Other"];
+        seasonSel.innerHTML = seasons
+            .map(s => `<option value="${s}"${s === suggested ? " selected" : ""}>${s}</option>`)
+            .join("");
+    });
+}
+
+// ── IRRIGATION CARD WIRING ───────────────────────────────
+function initIrrigationCards() {
+    const cards   = document.querySelectorAll(".irrigation-card input[type=radio]");
+    const hidden  = document.getElementById("irrigation");
+    if (!cards.length || !hidden) return;
+
+    cards.forEach(radio => {
+        radio.addEventListener("change", () => {
+            hidden.value = radio.value;
+            // Visual active state
+            document.querySelectorAll(".irrigation-card").forEach(c => c.classList.remove("selected"));
+            radio.closest(".irrigation-card")?.classList.add("selected");
+        });
+    });
 }
 
 // ── LOAD OPTIONS (dropdowns) ─────────────────────────────
@@ -66,41 +115,67 @@ async function loadOptions() {
         const opts = await res.json();
         populate("district",  opts.district);
         populate("crop",      opts.Crop);
-        populate("season",    opts.Season);
         populate("soil_type", opts.soil_type);
+        // Season is handled by month wiring — don't auto-populate it
     } catch {
         // Fallback static lists if API is unreachable
         populate("district",  ["Amreli","Anand","Banaskantha","Bharuch","Rajkot","Surat"]);
         populate("crop",      ["Groundnut","Wheat","Cotton(lint)","Sugarcane","Bajra","Maize"]);
-        populate("season",    ["Kharif","Rabi","Other"]);
         populate("soil_type", ["Black","Alluvial","Red","Laterite","Desert"]);
     }
 }
 
+/**
+ * Populate a <select> element with an array of values.
+ * Always adds a disabled placeholder as the first option so the
+ * user must consciously choose — no accidental first-value submission.
+ */
 function populate(id, values) {
     const sel = document.getElementById(id);
     if (!sel) return;
-    sel.innerHTML = values.map((v, i) =>
-        `<option value="${v}"${i === 0 ? " selected" : ""}>${v}</option>`
-    ).join("");
+
+    // Keep existing placeholder if present, otherwise generate one
+    const placeholderText = sel.querySelector("option[disabled]")?.textContent || "— Select —";
+    sel.innerHTML =
+        `<option value="" disabled selected>${placeholderText}</option>` +
+        values.map(v => `<option value="${v}">${v}</option>`).join("");
 }
 
 // ── LOAD MODEL METRICS ────────────────────────────────────
 async function loadMetrics() {
+    const badge = document.getElementById("nav-accuracy-badge");
+    const navR2 = document.getElementById("nav-r2");
     try {
         const res = await fetch(`${API}/metrics`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const m   = await res.json();
-        const r2  = m.r2_score ?? "—";
-        const navR2 = document.getElementById("nav-r2");
-        if (navR2) navR2.textContent = `R² ${r2}`;
+        const r2  = m.r2_score ?? null;
+
+        if (r2 !== null) {
+            if (navR2) navR2.textContent = `R² ${r2}`;
+            if (badge) badge.style.visibility = "visible";
+        }
+        // Update hero stat if present
         const statR2 = document.getElementById("stat-r2");
-        if (statR2) statR2.textContent = r2;
-    } catch { /* silent */ }
+        if (statR2 && r2 !== null) statR2.textContent = r2;
+    } catch {
+        // Metrics endpoint unavailable — keep badge hidden (already hidden via CSS)
+        if (navR2) navR2.textContent = "Model Live";
+        if (badge) badge.style.visibility = "visible";
+    }
 }
 
 // ── FORM SUBMIT ───────────────────────────────────────────
 async function handleSubmit(e) {
     e.preventDefault();
+
+    // Validate irrigation selection (radio cards)
+    const irrigationValue = document.getElementById("irrigation")?.value;
+    if (irrigationValue === "" || irrigationValue === null || irrigationValue === undefined) {
+        alert("⚠️ Please select your Irrigation / Water availability option before submitting.");
+        return;
+    }
+
     showLoading(true);
 
     const payload = {
@@ -110,7 +185,7 @@ async function handleSubmit(e) {
         area:                 parseFloat(document.getElementById("area").value),
         soil_type:            document.getElementById("soil_type").value,
         soil_fertility_score: parseFloat(document.getElementById("soil_fertility").value),
-        irrigation_score:     parseFloat(document.getElementById("irrigation").value),
+        irrigation_score:     parseFloat(irrigationValue),
     };
 
     try {
