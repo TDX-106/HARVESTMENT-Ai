@@ -1,14 +1,36 @@
-import requests
-from typing import Dict, Any
+import os
+from typing import Dict
 
-API_KEY = "ec947b1e43ed4b8c84909199a2d6a5af"
+import requests
+
+try:
+    # Optional convenience for local dev when a .env exists
+    from dotenv import load_dotenv  # type: ignore
+
+    load_dotenv()
+except Exception:
+    pass
+
+API_KEY = os.environ.get("OWM_API_KEY")
 
 def get_live_weather(district: str) -> Dict[str, float]:
     """
     Fetches live weather from OpenWeatherMap for the given district in Gujarat.
     Returns temperatures in Celsius and humidity.
     """
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={district},Gujarat,IN&appid={API_KEY}&units=metric"
+    if not API_KEY:
+        # Fallback to sensible defaults if key is not configured
+        return {
+            "min_temp": 22.0,
+            "max_temp": 32.0,
+            "humidity_avg": 60.0,
+            "current_temp": 28.0,
+            "current_rain_mm": 0.0,
+        }
+
+    # Sanitize input to prevent injection
+    safe_district = sanitize_district(district)
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={safe_district},Gujarat,IN&appid={API_KEY}&units=metric"
     
     try:
         response = requests.get(url, timeout=5)

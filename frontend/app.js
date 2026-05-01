@@ -2,20 +2,40 @@
    app.js  –  Harvestment Frontend Logic
    ─────────────────────────────────────────────────────── */
 
-const API = "http://localhost:8000";
+const API = (window.location.origin && window.location.origin !== "null")
+    ? window.location.origin
+    : "http://localhost:8000";
 let scenarioChart = null;
 let costChart     = null;
 let lastData      = null;
 
+const STORAGE_KEY = "harvestment:lastPrediction";
+
 // ── INIT ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
     initNavbar();
-    loadOptions();
     loadMetrics();
-    document.getElementById("btn-get-started").addEventListener("click", () => {
-        document.getElementById("advisory").scrollIntoView({ behavior: "smooth" });
-    });
-    document.getElementById("prediction-form").addEventListener("submit", handleSubmit);
+
+    const btnGetStarted = document.getElementById("btn-get-started");
+    if (btnGetStarted) {
+        btnGetStarted.addEventListener("click", () => {
+            window.location.href = "/advisory";
+        });
+    }
+
+    // Advisory page: form + dropdown options
+    const predictionForm = document.getElementById("prediction-form");
+    if (predictionForm) {
+        loadOptions();
+        predictionForm.addEventListener("submit", handleSubmit);
+    }
+
+    // Dashboard page: render from last prediction
+    const dashboard = document.getElementById("dashboard-section");
+    if (dashboard && !predictionForm) {
+        tryLoadDashboardFromStorage();
+    }
+
     window.addEventListener("click", e => {
         if (e.target.classList.contains("modal-overlay")) e.target.classList.remove("active");
     });
@@ -25,8 +45,18 @@ document.addEventListener("DOMContentLoaded", () => {
 function initNavbar() {
     window.addEventListener("scroll", () => {
         const nb = document.getElementById("navbar");
-        nb.classList.toggle("scrolled", window.scrollY > 60);
+        if (nb) nb.classList.toggle("scrolled", window.scrollY > 60);
     });
+
+    // Active link highlight for multi-page navigation
+    const path = (window.location.pathname || "/").toLowerCase();
+    const navHome = document.getElementById("nav-home");
+    const navAdvisory = document.getElementById("nav-advisory");
+    const navDashboard = document.getElementById("nav-dashboard");
+    [navHome, navAdvisory, navDashboard].forEach(el => el && el.classList.remove("active"));
+    if (path.endsWith("/advisory")) navAdvisory?.classList.add("active");
+    else if (path.endsWith("/dashboard")) navDashboard?.classList.add("active");
+    else navHome?.classList.add("active");
 }
 
 // ── LOAD OPTIONS (dropdowns) ─────────────────────────────
@@ -49,6 +79,7 @@ async function loadOptions() {
 
 function populate(id, values) {
     const sel = document.getElementById(id);
+    if (!sel) return;
     sel.innerHTML = values.map((v, i) =>
         `<option value="${v}"${i === 0 ? " selected" : ""}>${v}</option>`
     ).join("");
@@ -60,8 +91,10 @@ async function loadMetrics() {
         const res = await fetch(`${API}/metrics`);
         const m   = await res.json();
         const r2  = m.r2_score ?? "—";
-        document.getElementById("nav-r2").textContent    = `R² ${r2}`;
-        document.getElementById("stat-r2").textContent   = r2;
+        const navR2 = document.getElementById("nav-r2");
+        if (navR2) navR2.textContent = `R² ${r2}`;
+        const statR2 = document.getElementById("stat-r2");
+        if (statR2) statR2.textContent = r2;
     } catch { /* silent */ }
 }
 
@@ -89,8 +122,10 @@ async function handleSubmit(e) {
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
         lastData = data;
-        populateAll(data);
-        showDashboard(data);
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch { /* ignore */ }
+        window.location.href = "/dashboard";
     } catch (err) {
         alert("❌ Could not reach the backend.\n\nMake sure the API is running:\n  python -m uvicorn api:app --reload --port 8000\n\n" + err.message);
         console.error(err);
@@ -103,21 +138,38 @@ async function handleSubmit(e) {
 function showLoading(on) {
     const ov  = document.getElementById("loading-overlay");
     const btn = document.getElementById("submit-btn");
-    ov.classList.toggle("active", on);
-    btn.disabled = on;
-    document.getElementById("btn-text").textContent = on ? "⏳ Analyzing…" : "🚀 Run AI Prediction";
+    if (ov) ov.classList.toggle("active", on);
+    if (btn) btn.disabled = on;
+    const btnText = document.getElementById("btn-text");
+    if (btnText) btnText.textContent = on ? "⏳ Analyzing…" : "🚀 Run AI Prediction";
+}
+
+function tryLoadDashboardFromStorage() {
+    let raw = null;
+    try {
+        raw = sessionStorage.getItem(STORAGE_KEY);
+    } catch { /* ignore */ }
+    if (!raw) return;
+    try {
+        const data = JSON.parse(raw);
+        lastData = data;
+        populateAll(data);
+        showDashboard(data);
+    } catch {
+        // ignore bad storage
+    }
 }
 
 // ── SHOW DASHBOARD ────────────────────────────────────────
 function showDashboard(data) {
     const dash = document.getElementById("dashboard-section");
+    if (!dash) return;
     dash.style.display = "block";
-    setTimeout(() => dash.scrollIntoView({ behavior: "smooth" }), 120);
 
     const crop = data.crop;
     const dist = data.district;
-    document.getElementById("dashboard-subtitle").textContent =
-        `${crop} · ${dist} · ${data.season} · ${data.area_ha} ha`;
+    const subtitle = document.getElementById("dashboard-subtitle");
+    if (subtitle) subtitle.textContent = `${crop} · ${dist} · ${data.season} · ${data.area_ha} ha`;
 }
 
 // ── POPULATE ALL SECTIONS ─────────────────────────────────
@@ -317,6 +369,8 @@ function renderCostChart(breakdown) {
         }
     });
 }
+
+
 
 // ── MODAL HELPERS ─────────────────────────────────────────
 function openModal(id)  { document.getElementById(id).classList.add("active"); }

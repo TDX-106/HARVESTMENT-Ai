@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvestment | Dashboard</title>
+    <meta name="description" content="Harvestment dashboard showing yield prediction, financial advisory, scenarios, weather and breakeven analysis.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v=2">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loader-box">
+            <div class="spinner"></div>
+            <p class="loader-text">Loading Advisory…</p>
+            <p class="loader-sub">Rendering dashboard from your last prediction</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="logo">
+            <span class="logo-icon">🌾</span>
+            <span class="logo-text">Harvestment</span>
+            <span class="logo-badge">Gujarat AI</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="/" class="nav-link" id="nav-home">Home</a></li>
+            <li><a href="/advisory" class="nav-link" id="nav-advisory">Advisory</a></li>
+            <li><a href="/dashboard" class="nav-link" id="nav-dashboard">Dashboard</a></li>
+        </ul>
+        <div class="nav-model-badge" id="nav-accuracy-badge" title="Model Accuracy">
+            <span class="badge-dot"></span>
+            <span id="nav-r2">R² —</span>
+        </div>
+    </nav>
+
+    <!-- Dashboard -->
+    <section class="section dashboard-section" id="dashboard-section" style="display:block;">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">Step 2</div>
+                <h2>Your Harvestment Advisory</h2>
+                <p id="dashboard-subtitle">If you don’t see results here, go to Advisory and run a prediction first.</p>
+            </div>
+
+            <!-- Summary Strip -->
+            <div class="summary-strip" id="summary-strip">
+                <div class="summary-item">
+                    <span class="summary-label">Predicted Yield</span>
+                    <strong id="strip-yield" class="summary-value gold">— t/ha</strong>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-item">
+                    <span class="summary-label">Net Profit</span>
+                    <strong id="strip-profit" class="summary-value">—</strong>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-item">
+                    <span class="summary-label">ROI</span>
+                    <strong id="strip-roi" class="summary-value">—</strong>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-item">
+                    <span class="summary-label">Live Temp</span>
+                    <strong id="strip-temp" class="summary-value">—</strong>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-item">
+                    <span class="summary-label">Model Confidence</span>
+                    <strong id="strip-confidence" class="summary-value">—</strong>
+                </div>
+            </div>
+
+            <!-- Cards Grid -->
+            <div class="cards-grid">
+                <!-- Yield Card -->
+                <div class="feature-card" id="card-yield" onclick="openModal('yield-modal')">
+                    <div class="card-glow card-glow-gold"></div>
+                    <div class="card-icon">🌾</div>
+                    <h3>Yield Prediction</h3>
+                    <p>AI-predicted harvest quantity with pessimistic and optimistic confidence bands.</p>
+                    <div class="card-preview" id="preview-yield">— t/ha</div>
+                    <span class="card-action">View Full Report →</span>
+                </div>
+
+                <!-- Financial Card -->
+                <div class="feature-card" id="card-financial" onclick="openModal('financial-modal')">
+                    <div class="card-glow card-glow-green"></div>
+                    <div class="card-icon">💰</div>
+                    <h3>Financial Advisory</h3>
+                    <p>Cost breakdown, revenue forecast, net profit, ROI, and breakeven analysis.</p>
+                    <div class="card-preview" id="preview-profit">₹ —</div>
+                    <span class="card-action">View Full Report →</span>
+                </div>
+
+                <!-- Scenarios Card -->
+                <div class="feature-card" id="card-scenario" onclick="openModal('scenario-modal')">
+                    <div class="card-glow card-glow-blue"></div>
+                    <div class="card-icon">📊</div>
+                    <h3>Scenario Planning</h3>
+                    <p>Compare pessimistic, expected, and optimistic profit outcomes across market conditions.</p>
+                    <div class="card-preview" id="preview-scenario">3 Scenarios</div>
+                    <span class="card-action">View Chart →</span>
+                </div>
+
+                <!-- Weather Card -->
+                <div class="feature-card" id="card-weather" onclick="openModal('weather-modal')">
+                    <div class="card-glow card-glow-sky"></div>
+                    <div class="card-icon">🌤️</div>
+                    <h3>Live Weather</h3>
+                    <p>Current weather conditions blended with historical data to refine your forecast.</p>
+                    <div class="card-preview" id="preview-weather">—°C</div>
+                    <span class="card-action">View Details →</span>
+                </div>
+
+                <!-- Cost Breakdown Card -->
+                <div class="feature-card" id="card-cost" onclick="openModal('cost-modal')">
+                    <div class="card-glow card-glow-amber"></div>
+                    <div class="card-icon">📋</div>
+                    <h3>Cost Breakdown</h3>
+                    <p>Itemised input costs: seed, fertilizer, labour, irrigation, machinery and more.</p>
+                    <div class="card-preview" id="preview-cost">₹ —</div>
+                    <span class="card-action">View Breakdown →</span>
+                </div>
+
+                <!-- Breakeven Card -->
+                <div class="feature-card" id="card-breakeven" onclick="openModal('breakeven-modal')">
+                    <div class="card-glow card-glow-red"></div>
+                    <div class="card-icon">⚖️</div>
+                    <h3>Breakeven Analysis</h3>
+                    <p>Minimum yield required to cover all costs — with your current margin above it.</p>
+                    <div class="card-preview" id="preview-breakeven">— t/ha</div>
+                    <span class="card-action">View Analysis →</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <!-- <div class="footer-brand"> -->
+                <div class="footer-logo">
+                    <span class="logo-icon">🌾</span>
+                    <span class="logo-text">Harvestment</span>
+                    <span class="logo-badge">Gujarat AI</span>
+                </div>
+                <p class="footer-tagline">
+                    Your last advisory is saved in this browser session. Run a new prediction anytime from <strong>Advisory</strong>.
+                </p>
+                <div class="footer-about">
+                    <div class="footer-about-title">Reading your dashboard</div>
+                    <p><strong>Confidence</strong> comes from the prediction band width (min–max). A wider band means higher uncertainty.</p>
+                    <p><strong>Breakeven</strong> shows the minimum yield needed to cover costs at the assumed market price.</p>
+                </div>
+            <!-- </div> -->
+            <!-- <div class="footer-links">
+                <a class="footer-link" href="/advisory">Run New Advisory</a>
+                <a class="footer-link" href="/">Home</a>
+            </div> -->
+        </div>
+        <div class="footer-meta">
+            <span>© <span id="footer-year"></span> Harvestment</span>
+            <span>Model output depends on inputs & weather feed</span>
+        </div>
+    </footer>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         MODALS
+    ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- Yield Modal -->
+    <div class="modal-overlay" id="yield-modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('yield-modal')" aria-label="Close">✕</button>
+            <div class="modal-icon">🌾</div>
+            <h2>Yield Prediction</h2>
+            <p class="modal-meta" id="yield-meta">— · — · —</p>
+
+            <div class="yield-gauge">
+                <div class="gauge-labels">
+                    <span>Min</span><span>Predicted</span><span>Max</span>
+                </div>
+                <div class="gauge-bar">
+                    <div class="gauge-fill" id="gauge-fill"></div>
+                    <div class="gauge-marker" id="gauge-marker"></div>
+                </div>
+                <div class="gauge-values">
+                    <span id="res-min-yield">—</span>
+                    <span id="res-yield" class="gauge-center">—</span>
+                    <span id="res-max-yield">—</span>
+                </div>
+                <div class="gauge-units">t/ha &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; t/ha &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; t/ha</div>
+            </div>
+
+            <div class="data-grid-2">
+                <div class="data-box highlight-gold">
+                    <span class="label">Total Expected Production</span>
+                    <strong id="res-total-yield" class="value">— t</strong>
+                </div>
+                <div class="data-box">
+                    <span class="label">Yield Category</span>
+                    <strong id="res-category" class="value">—</strong>
+                </div>
+                <div class="data-box">
+                    <span class="label">Production Range (Total)</span>
+                    <strong id="res-total-range" class="value-sm">—</strong>
+                </div>
+                <div class="data-box">
+                    <span class="label">Model Confidence</span>
+                    <strong id="res-confidence" class="value">—</strong>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <span class="insight-icon">💡</span>
+                <p id="yield-insight">The AI model predicts a yield range based on soil, weather, and historical crop data for your district.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Modal -->
+    <div class="modal-overlay" id="financial-modal">
+        <div class="modal-content modal-large">
+            <button class="close-btn" onclick="closeModal('financial-modal')" aria-label="Close">✕</button>
+            <div class="modal-icon">💰</div>
+            <h2>Financial Advisory</h2>
+            <p class="modal-meta" id="fin-meta">— · —</p>
+
+            <div class="alert-box" id="breakeven-alert" style="display:none;">
+                ⚠️ <strong>Risk Alert:</strong> Predicted yield is close to or below the breakeven point. Consider cost reduction or yield-boosting inputs.
+            </div>
+
+            <div class="fin-summary-bar">
+                <div class="fin-bar-item">
+                    <span>Total Cost</span>
+                    <strong id="res-cost" class="fin-cost">₹—</strong>
+                </div>
+                <div class="fin-arrow">→</div>
+                <div class="fin-bar-item">
+                    <span>Gross Revenue</span>
+                    <strong id="res-revenue" class="fin-revenue">₹—</strong>
+                </div>
+                <div class="fin-arrow">=</div>
+                <div class="fin-bar-item">
+                    <span>Net Profit</span>
+                    <strong id="res-profit" class="fin-profit">₹—</strong>
+                </div>
+            </div>
+
+            <div class="data-grid-3">
+                <div class="data-box highlight-gold">
+                    <span class="label">Return on Investment</span>
+                    <strong id="res-roi" class="value">—%</strong>
+                </div>
+                <div class="data-box">
+                    <span class="label">Market Price / Tonne</span>
+                    <strong id="res-msp" class="value-sm">₹—</strong>
+                </div>
+                <div class="data-box">
+                    <span class="label">Cost / Hectare</span>
+                    <strong id="res-cost-ha" class="value-sm">₹—</strong>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <span class="insight-icon">📈</span>
+                <p id="fin-insight">Based on current MSP and APMC rates for Gujarat.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scenario Modal -->
+    <div class="modal-overlay" id="scenario-modal">
+        <div class="modal-content modal-large">
+            <button class="close-btn" onclick="closeModal('scenario-modal')" aria-label="Close">✕</button>
+            <div class="modal-icon">📊</div>
+            <h2>Scenario Planning</h2>
+            <p class="modal-meta">Profit comparison across weather and market conditions</p>
+
+            <div class="scenario-cards">
+                <div class="scenario-card scenario-pess">
+                    <div class="sc-label">Pessimistic</div>
+                    <div class="sc-assumption" id="sc-pess-assumption">Min yield · −10% price</div>
+                    <div class="sc-profit" id="sc-pess-profit">₹—</div>
+                    <div class="sc-roi" id="sc-pess-roi">ROI: —%</div>
+                </div>
+                <div class="scenario-card scenario-exp">
+                    <div class="sc-label">Expected</div>
+                    <div class="sc-assumption" id="sc-exp-assumption">Predicted yield · market price</div>
+                    <div class="sc-profit" id="sc-exp-profit">₹—</div>
+                    <div class="sc-roi" id="sc-exp-roi">ROI: —%</div>
+                </div>
+                <div class="scenario-card scenario-opt">
+                    <div class="sc-label">Optimistic</div>
+                    <div class="sc-assumption" id="sc-opt-assumption">Max yield · +10% price</div>
+                    <div class="sc-profit" id="sc-opt-profit">₹—</div>
+                    <div class="sc-roi" id="sc-opt-roi">ROI: —%</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="scenarioChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weather Modal -->
+    <div class="modal-overlay" id="weather-modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('weather-modal')" aria-label="Close">✕</button>
+            <div class="modal-icon">🌤️</div>
+            <h2>Live Weather — <span id="res-district">—</span></h2>
+            <p class="modal-meta">Real-time data from OpenWeatherMap, blended with district historical averages</p>
+
+            <div class="weather-hero">
+                <div class="weather-main-temp" id="w-temp-big">—°C</div>
+                <div class="weather-main-label">Current Temperature</div>
+            </div>
+
+            <div class="data-grid-2">
+                <div class="data-box">
+                    <span class="label">Min Temperature</span>
+                    <strong id="w-min-temp" class="value-sm">—°C</strong>
+                </div>
+                <div class="data-box">
+                    <span class="label">Max Temperature</span>
+                    <strong id="w-max-temp" class="value-sm">—°C</strong>
+                </div>
+                <div class="data-box highlight-sky">
+                    <span class="label">Humidity</span>
+                    <strong id="w-hum" class="value">—%</strong>
+                </div>
+                <div class="data-box">
+                    <span class="label">Current Rainfall</span>
+                    <strong id="w-rain" class="value-sm">— mm/h</strong>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <span class="insight-icon">🌡️</span>
+                <p>Live weather is automatically blended with historical seasonal averages for your district to improve prediction accuracy.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cost Breakdown Modal -->
+    <div class="modal-overlay" id="cost-modal">
+        <div class="modal-content modal-large">
+            <button class="close-btn" onclick="closeModal('cost-modal')" aria-label="Close">✕</button>
+            <div class="modal-icon">📋</div>
+            <h2>Cost Breakdown</h2>
+            <p class="modal-meta" id="cost-meta">Total cultivation cost for your farm</p>
+
+            <div class="cost-table" id="cost-table">
+                <!-- Rows injected by JS -->
+            </div>
+
+            <div class="chart-container" style="height:240px; margin-top:20px;">
+                <canvas id="costChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breakeven Modal -->
+    <div class="modal-overlay" id="breakeven-modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('breakeven-modal')" aria-label="Close">✕</button>
+            <div class="modal-icon">⚖️</div>
+            <h2>Breakeven Analysis</h2>
+            <p class="modal-meta">Minimum yield needed to cover all costs</p>
+
+            <div class="breakeven-visual" id="breakeven-visual">
+                <div class="be-bar-wrap">
+                    <div class="be-track">
+                        <div class="be-fill-cost" id="be-cost-bar"></div>
+                        <div class="be-fill-pred" id="be-pred-bar"></div>
+                    </div>
+                    <div class="be-legend">
+                        <span><span class="dot dot-red"></span> Breakeven</span>
+                        <span><span class="dot dot-green"></span> Predicted</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-grid-2">
+                <div class="data-box highlight-red" id="be-box-risk">
+                    <span class="label">Breakeven Yield</span>
+                    <strong id="res-breakeven-yield" class="value">— t/ha</strong>
+                </div>
+                <div class="data-box highlight-gold">
+                    <span class="label">Your Predicted Yield</span>
+                    <strong id="res-pred-yield-be" class="value">— t/ha</strong>
+                </div>
+                <div class="data-box">
+                    <span class="label">Margin Above Breakeven</span>
+                    <strong id="res-margin" class="value-sm">— t/ha</strong>
+                </div>
+                <div class="data-box">
+                    <span class="label">Breakeven Production</span>
+                    <strong id="res-breakeven-prod" class="value-sm">— tonnes</strong>
+                </div>
+            </div>
+
+            <div class="insight-box" id="be-insight-box">
+                <span class="insight-icon">⚖️</span>
+                <p id="be-insight-text">Your predicted yield is above the breakeven threshold.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>document.getElementById('footer-year')?.append(new Date().getFullYear());</script>
+</body>
+</html>

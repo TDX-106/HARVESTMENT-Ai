@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvestment | Advisory</title>
+    <meta name="description" content="Enter farm details for AI-powered yield prediction and financial advisory for Gujarat farmers.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v=2">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loader-box">
+            <div class="spinner"></div>
+            <p class="loader-text">Analyzing Farm Data…</p>
+            <p class="loader-sub">Running AI model + fetching live weather</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="logo">
+            <span class="logo-icon">🌾</span>
+            <span class="logo-text">Harvestment</span>
+            <span class="logo-badge">Gujarat AI</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="/" class="nav-link" id="nav-home">Home</a></li>
+            <li><a href="/advisory" class="nav-link" id="nav-advisory">Advisory</a></li>
+            <li><a href="/dashboard" class="nav-link" id="nav-dashboard">Dashboard</a></li>
+        </ul>
+        <div class="nav-model-badge" id="nav-accuracy-badge" title="Model Accuracy">
+            <span class="badge-dot"></span>
+            <span id="nav-r2">R² —</span>
+        </div>
+    </nav>
+
+    <!-- Advisory Form -->
+    <section class="section form-section" id="advisory">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">Step 1</div>
+                <h2>Enter Farm Details</h2>
+                <p>Tell us about your farm. Our AI model analyses soil, weather and regional data to generate your advisory.</p>
+            </div>
+
+            <form id="prediction-form" class="prediction-form">
+                <!-- Row 1: Location + Crop -->
+                <div class="form-row-label">Farm Location & Crop</div>
+                <div class="form-grid form-grid-3">
+                    <div class="input-group">
+                        <label for="district">
+                            <span class="input-icon">📍</span> District
+                        </label>
+                        <select id="district" required>
+                            <option value="" disabled selected>Loading…</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="crop">
+                            <span class="input-icon">🌱</span> Crop
+                        </label>
+                        <select id="crop" required>
+                            <option value="" disabled selected>Loading…</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="season">
+                            <span class="input-icon">🗓️</span> Season
+                        </label>
+                        <select id="season" required>
+                            <option value="" disabled selected>Loading…</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 2: Land + Soil -->
+                <div class="form-row-label" style="margin-top:24px;">Land & Soil Parameters</div>
+                <div class="form-grid form-grid-4">
+                    <div class="input-group">
+                        <label for="area">
+                            <span class="input-icon">📐</span> Area (Hectares)
+                        </label>
+                        
+                        <input class="slider-wrap" type="number" id="area" value="10" step="0.5" min="0.1" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="soil_type">
+                            <span class="input-icon">🪨</span> Soil Type
+                        </label>
+                        <select id="soil_type" required>
+                            <option value="" disabled selected>Loading…</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="soil_fertility">
+                            <span class="input-icon">🧪</span> Soil Fertility
+                            <span class="label-hint">(1 = Poor, 10 = Rich)</span>
+                        </label>
+                        <div class="slider-wrap">
+                            <input type="range" id="soil_fertility_range" min="1" max="10" value="5" step="1" oninput="document.getElementById('soil_fertility').value=this.value">
+                            <input type="number" id="soil_fertility" value="5" min="1" max="10" required oninput="document.getElementById('soil_fertility_range').value=this.value">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="irrigation">
+                            <span class="input-icon">💧</span> Irrigation Coverage
+                            <span class="label-hint">(0 = None, 1 = Full)</span>
+                        </label>
+                        <div class="slider-wrap">
+                            <input type="range" id="irrigation_range" min="0" max="1" value="0.6" step="0.05" oninput="document.getElementById('irrigation').value=this.value">
+                            <input type="number" id="irrigation" value="0.6" step="0.05" min="0" max="1" required oninput="document.getElementById('irrigation_range').value=this.value">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-action">
+                    <button type="submit" class="btn-primary" id="submit-btn">
+                        <span id="btn-text">🚀 Run AI Prediction</span>
+                    </button>
+                    <p class="form-note">Prediction takes ~2 seconds · Live weather is fetched automatically</p>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <!-- <div class="footer-brand"> -->
+                <div class="footer-logo">
+                    <span class="logo-icon">🌾</span>
+                    <span class="logo-text">Harvestment</span>
+                    <span class="logo-badge">Gujarat AI</span>
+                </div>
+                <p class="footer-tagline">
+                    Enter your farm details, then view results on the <strong>dashboard</strong>.
+                </p>
+                <div class="footer-about">
+                    <div class="footer-about-title">How it works</div>
+                    <p>We combine your inputs (district, crop, season, soil, irrigation) with live weather signals to generate a yield range and financial advisory.</p>
+                    <p><strong>Tip:</strong> Use the same crop/season and vary irrigation or fertility to compare ROI scenarios.</p>
+                </div>
+            <!-- </div> -->
+            <!-- <div class="footer-links">
+                <a class="footer-link" href="/">Home</a>
+                <a class="footer-link" href="/dashboard">Dashboard</a>
+            </div> -->
+        </div>
+        <div class="footer-meta">
+            <span>© <span id="footer-year"></span> Harvestment</span>
+            <span>Predictions are estimates · verify on-field</span>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+    <script>document.getElementById('footer-year')?.append(new Date().getFullYear());</script>
+</body>
+</html>

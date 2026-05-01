@@ -22,6 +22,15 @@ Make sure you have Python installed. Open your terminal in the project folder an
 pip install -r requirements.txt
 ```
 
+### 1.5 Configure environment (.env)
+Create a `.env` file in the project root (it’s already in `.gitignore`) with:
+
+```bash
+OWM_API_KEY=your_openweathermap_key_here
+# Optional (recommended for any deployment):
+# ALLOWED_ORIGINS=http://localhost:8000,https://your-domain.com
+```
+
 ### 2. Start the Backend Server
 The backend is built with FastAPI and serves both the API and the beautiful frontend interface. Start it by running:
 ```bash

@@ -123,8 +123,10 @@ class YieldPredictor:
             if value in le.classes_:
                 row.append(le.transform([value])[0])
             else:
-                # Unseen label → use index 0 (most stable fallback)
-                row.append(0)
+                allowed = [str(c) for c in le.classes_ if str(c).lower() != "nan"]
+                sample = ", ".join(allowed[:10])
+                more = "" if len(allowed) <= 10 else f" (and {len(allowed) - 10} more)"
+                raise ValueError(f"Unknown {col} '{value}'. Allowed: {sample}{more}")
 
         for col in self.numerical_cols:
             row.append(float(raw.get(col, np.nan)))
@@ -283,7 +285,32 @@ class YieldPredictor:
                 result.append(str(c))
             return sorted(result)
 
-        return {
+        options = {
             col: _clean(self.encoders[col].classes_)
             for col in self.categorical_cols
         }
+
+        # Ensure all Gujarat districts are present in UI dropdowns
+        # (some training datasets omit one or two districts)
+        gujarat_districts = [
+            "Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar",
+            "Botad", "Chhota Udaipur", "Dahod", "Dang", "Devbhumi Dwarka", "Gandhinagar",
+            "Gir Somnath", "Jamnagar", "Junagadh", "Kheda", "Kutch", "Mahisagar", "Mehsana",
+            "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot",
+            "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad",
+        ]
+        if "district" in options:
+            merged = sorted(set(options["district"]) | set(gujarat_districts))
+            options["district"] = merged
+            
+            # Update the encoder to include missing districts (like Ahmedabad)
+            missing_districts = set(gujarat_districts) - set(self.encoders["district"].classes_)
+            if missing_districts:
+                from sklearn.preprocessing import LabelEncoder
+                # Create new encoder with all districts
+                all_districts = sorted(list(self.encoders["district"].classes_) + list(missing_districts))
+                new_encoder = LabelEncoder()
+                new_encoder.fit(all_districts)
+                self.encoders["district"] = new_encoder
+
+        return options
