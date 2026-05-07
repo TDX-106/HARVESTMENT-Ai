@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <!-- Stem -->
+  <line x1="20" y1="36" x2="20" y2="8" stroke="#e8a020" stroke-width="2" stroke-linecap="round"/>
+  <!-- Left grain top -->
+  <path d="M20 14 C18 10 13 9 12 12 C11 16 16 18 20 14Z" fill="#e8a020" opacity="0.9"/>
+  <!-- Right grain top -->
+  <path d="M20 14 C22 10 27 9 28 12 C29 16 24 18 20 14Z" fill="#e8a020" opacity="0.7"/>
+  <!-- Left grain mid -->
+  <path d="M20 20 C17 17 12 17 11 20 C10 24 16 25 20 20Z" fill="#e8a020" opacity="0.9"/>
+  <!-- Right grain mid -->
+  <path d="M20 20 C23 17 28 17 29 20 C30 24 24 25 20 20Z" fill="#e8a020" opacity="0.7"/>
+  <!-- Left grain low -->
+  <path d="M20 27 C18 23 13 23 12 26 C11 30 17 31 20 27Z" fill="#e8a020" opacity="0.9"/>
+  <!-- Right grain low -->
+  <path d="M20 27 C22 23 27 23 28 26 C29 30 23 31 20 27Z" fill="#e8a020" opacity="0.7"/>
+</svg>

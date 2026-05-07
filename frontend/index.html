@@ -6,8 +6,9 @@
     <title>Harvestment | Smart Crop Advisory for Gujarat</title>
     <meta name="description" content="AI-powered crop yield prediction and financial advisory system for Gujarat farmers. Get yield forecasts, ROI analysis, and scenario planning powered by machine learning.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=2">
+    <link rel="stylesheet" href="/styles.css?v=17">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 <body>
 
@@ -18,36 +19,105 @@
             <p class="loader-text">Analyzing Farm Data…</p>
             <p class="loader-sub">Running AI model + fetching live weather</p>
         </div>
-    </div>
-
-    <!-- Navigation -->
+    </div>    <!-- Navigation -->
     <nav class="navbar" id="navbar">
-        <div class="logo">
-            <span class="logo-icon">🌾</span>
+        <a class="logo" href="/">
+            <span class="logo-icon">&#127806;</span>
             <span class="logo-text">Harvestment</span>
-            <span class="logo-badge">Gujarat AI</span>
-        </div>
-        <ul class="nav-links">
+        </a>
+        <ul class="nav-links desktop-links">
             <li><a href="/" class="nav-link" id="nav-home">Home</a></li>
             <li><a href="/advisory" class="nav-link" id="nav-advisory">Advisory</a></li>
             <li><a href="/dashboard" class="nav-link" id="nav-dashboard">Dashboard</a></li>
             <li><a href="/crops" class="nav-link" id="nav-crops">Crop Guide</a></li>
         </ul>
-        <div class="nav-model-badge" id="nav-accuracy-badge" title="Model Accuracy">
-            <span class="badge-dot"></span>
-            <span id="nav-r2">R² —</span>
+        <div class="nav-right">
+            <div class="menu-dropdown" id="menu-dropdown">
+                <button class="menu-toggle" id="mobile-menu-btn" aria-label="Open Menu" aria-expanded="false">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </button>
+                <div class="dropdown-panel" id="dropdown-panel" role="menu">
+                    <div class="dp-mobile-links">
+                        <a href="/" class="dp-link"><i class="ph-bold ph-house"></i> Home</a>
+                        <a href="/advisory" class="dp-link"><i class="ph-bold ph-plant"></i> Advisory</a>
+                        <a href="/dashboard" class="dp-link"><i class="ph-bold ph-chart-bar"></i> Dashboard</a>
+                        <a href="/crops" class="dp-link"><i class="ph-bold ph-tree"></i> Crop Guide</a>
+                        <div class="dp-divider"></div>
+                    </div>
+                    <div class="dp-item">
+                        <span class="dp-item-icon"><i class="ph-bold ph-chart-line-up"></i></span>
+                        <div class="dp-item-body">
+                            <span class="dp-item-label">Model Score</span>
+                            <div id="nav-accuracy-badge" class="nav-model-badge">
+                                <span class="badge-dot"></span>
+                                <span id="nav-r2">Loading R²…</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dp-item">
+                        <span class="dp-item-icon"><i class="ph-bold ph-translate"></i></span>
+                        <div class="dp-item-body">
+                            <span class="dp-item-label">Language</span>
+                            <div id="google_translate_element"></div>
+                        </div>
+                    </div>
+                    <button class="dp-item dp-about-btn" id="dp-about-btn">
+                        <span class="dp-item-icon"><i class="ph-bold ph-info"></i></span>
+                        <div class="dp-item-body">
+                            <span class="dp-item-label">About Us</span>
+                            <span class="dp-item-sub">Project &amp; Team</span>
+                        </div>
+                        <i class="ph-bold ph-arrow-right dp-arrow"></i>
+                    </button>
+                </div>
+            </div>
         </div>
     </nav>
+
+    <!-- About Us Modal -->
+    <div class="modal-overlay" id="about-modal" role="dialog" aria-modal="true">
+        <div class="modal-content" style="max-width:480px;">
+            <button class="close-btn" onclick="closeModal('about-modal')" aria-label="Close">&times;</button>
+            <div class="modal-icon">🌾</div>
+            <h2>About Harvestment</h2>
+            <p class="modal-meta">An Intelligent Agricultural Forecasting System for Gujarat</p>
+            <p style="font-size:0.9rem;color:var(--muted);line-height:1.7;margin-bottom:16px;">
+                Harvestment combines <strong style="color:var(--text);">RandomForest + GradientBoosting</strong> ensemble models
+                to deliver yield predictions, ROI analysis, and scenario planning across
+                <strong style="color:var(--gold-light);">29 crops</strong> and
+                <strong style="color:var(--gold-light);">32 districts</strong> of Gujarat —
+                with live weather integration powered by Open-Meteo.
+            </p>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin-bottom:16px;">
+                <div style="font-size:0.7rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">The Team</div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div class="team-avatar">TD</div>
+                        <div><div class="team-name">Tanmay Dighade</div><div class="team-email"><a href="mailto:yoginitanmay3641@gmail.com">yoginitanmay3641@gmail.com</a></div></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div class="team-avatar">SV</div>
+                        <div><div class="team-name">Suhani Vaghela</div><div class="team-email"><a href="mailto:suhanivaghela005@gmail.com">suhanivaghela005@gmail.com</a></div></div>
+                    </div>
+                </div>
+            </div>
+            <div style="font-size:0.78rem;color:var(--muted);">Gandhinagar Institute of Technology · B.Tech CSE · 2022–2026</div>
+        </div>
+    </div>
 
     <!-- ─── HERO ──────────────────────────────────────────────────────────── -->
     <header class="hero" id="home">
         <div class="hero-bg"></div>
         <div class="hero-gradient"></div>
         <div class="hero-content">
-            <div class="hero-tag">🇮🇳 Gujarat Agricultural Intelligence</div>
+            <div class="hero-tag">
+                <i class="ph-duotone ph-flag"></i>
+                Gujarat Agricultural Intelligence
+            </div>
             <h1 class="hero-title">
-                Predict. Plan.<br>
-                <span class="hero-title-gold">Profit.</span>
+                Predict. Plan. <span class="hero-title-gold">Profit.</span>
             </h1>
             <p class="hero-subtitle">
                 AI-powered yield forecasting and financial advisory for Gujarat farmers —
@@ -76,10 +146,9 @@
             </div>
             <button class="btn-hero" id="btn-get-started">
                 Get Your Advisory
-                <span class="btn-arrow">↓</span>
+                <span class="btn-arrow"><i class="ph-bold ph-arrow-down" style="font-size: 20px;"></i></span>
             </button>
         </div>
-        <!-- <div class="hero-scroll-hint">scroll to begin</div> -->
     </header>
 
     <footer class="site-footer">
@@ -89,10 +158,9 @@
                 <div class="footer-logo">
                     <span class="logo-icon">🌾</span>
                     <span class="logo-text">Harvestment</span>
-                    <span class="logo-badge">Gujarat AI</span>
                 </div>
                 <p class="footer-brand-tagline">Harvestment: An Intelligent Agricultural Forecasting System for Gujarat's Small-Scale Farmers</p>
-                <span class="footer-project-badge">🎓 Final Year Project · 2025</span>
+                <span class="footer-project-badge">🎓 Final Year Project</span>
                 <div class="footer-about-box" style="margin-top:14px;">
                     <strong>What you get:</strong> Yield range (min/expected/max), ROI &amp; breakeven risk, scenario planning, and live weather integration — all powered by ML.
                 </div>
@@ -101,10 +169,10 @@
             <div class="footer-col">
                 <h4>Quick Links</h4>
                 <div class="footer-nav-links">
-                    <a href="/">🏠 Home</a>
-                    <a href="/advisory">📋 Get Advisory</a>
-                    <a href="/dashboard">📊 Dashboard</a>
-                    <a href="/crops">🌱 Crop Guide</a>
+                    <a href="/">Home</a>
+                    <a href="/advisory">Get Advisory</a>
+                    <a href="/dashboard">Dashboard</a>
+                    <a href="/crops">Crop Guide</a>
                 </div>
             </div>
             <!-- Team -->
@@ -128,11 +196,11 @@
             <!-- Academic -->
             <div class="footer-col">
                 <h4>Academic Info</h4>
-                <div class="footer-acad-item"><span class="footer-acad-icon">🏛️</span><span>Gandhinagar Institute of Technology</span></div>
-                <div class="footer-acad-item"><span class="footer-acad-icon">🎓</span><span>Gandhinagar University</span></div>
-                <div class="footer-acad-item"><span class="footer-acad-icon">📘</span><span>Final Year B.Tech Project</span></div>
-                <div class="footer-acad-item"><span class="footer-acad-icon">💻</span><span>Computer Science &amp; Engineering</span></div>
-                <div class="footer-acad-item"><span class="footer-acad-icon">🗓️</span><span>Academic Year 2022–2026</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon"><i class="ph-duotone ph-buildings"></i></span><span>Gandhinagar Institute of Technology</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon"><i class="ph-duotone ph-graduation-cap"></i></span><span>Gandhinagar University</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon"><i class="ph-duotone ph-book-open"></i></span><span>Final Year B.Tech Project</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon"><i class="ph-duotone ph-cpu"></i></span><span>Computer Science &amp; Engineering</span></div>
+                <div class="footer-acad-item"><span class="footer-acad-icon"><i class="ph-duotone ph-calendar"></i></span><span>Academic Year 2022–2026</span></div>
             </div>
         </div>
         <div class="footer-meta">
@@ -141,7 +209,15 @@
         </div>
     </footer>
 
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'en,gu,hi', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <script src="app.js"></script>
-    <script>document.getElementById('footer-year')?.append(new Date().getFullYear());</script>
+    <script>
+        document.getElementById('footer-year')?.append(new Date().getFullYear());
+    </script>
 </body>
 </html>

@@ -1,11 +1,42 @@
-Gujarat Crop Yield Model â€“ Training Report
+Gujarat Crop Yield Model – Training Report
 =============================================
 
 MODEL: HistGradientBoosting (central prediction)
-  MAE  : 0.693 tonnes/ha
-  RMSE : 1.9888 tonnes/ha
-  RÂ²   : 0.974
+  MAE  : 1.5028 tonnes/ha
+  RMSE : 5.5528 tonnes/ha
+R²   : 0.8241
 
-QUANTILE INTERVAL [10th â€“ 90th percentile]
-  Coverage  : 65.9% actual yields inside band
-  Avg width : 3.937 tonnes/ha
+QUANTILE INTERVAL [10th – 90th percentile]
+  Coverage  : 67.5% actual yields inside band
+  Avg width : 4.289 tonnes/ha
+
+PER-CROP MAE (t/ha):
+  Arhar/Tur                      0.2
+  Bajra                          0.325
+  Banana                         31.313
+  Castor seed                    0.391
+  Cotton(lint)                   0.855
+  Dry chillies                   1.367
+  Garlic                         0.861
+  Gram                           0.351
+  Groundnut                      0.427
+  Guar seed                      0.327
+  Jowar                          0.151
+  Maize                          0.286
+  Moong(Green Gram)              0.185
+  Moth                           0.205
+  Onion                          4.099
+  Other  Rabi pulses             0.292
+  Other Cereals                  0.343
+  Other Kharif pulses            0.169
+  Potato                         5.705
+  Ragi                           0.121
+  Rapeseed &Mustard              0.101
+  Rice                           0.567
+  Sesamum                        0.226
+  Small millets                  0.408
+  Soyabean                       0.819
+  Sugarcane                      27.423
+  Tobacco                        0.561
+  Urad                           0.279
+  Wheat                          0.39

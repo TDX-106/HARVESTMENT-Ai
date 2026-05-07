@@ -6,8 +6,9 @@
     <title>Harvestment | Dashboard</title>
     <meta name="description" content="Harvestment dashboard showing yield prediction, financial advisory, scenarios, weather and breakeven analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=3">
+    <link rel="stylesheet" href="/styles.css?v=17">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 <body>
 
@@ -22,24 +23,91 @@
 
     <!-- Navigation -->
     <nav class="navbar" id="navbar">
-        <div class="logo">
-            <span class="logo-icon">🌾</span>
+        <a class="logo" href="/">
+            <span class="logo-icon">&#127806;</span>
             <span class="logo-text">Harvestment</span>
-            <span class="logo-badge">Gujarat AI</span>
-        </div>
-        <ul class="nav-links">
+        </a>
+        <ul class="nav-links desktop-links">
             <li><a href="/" class="nav-link" id="nav-home">Home</a></li>
             <li><a href="/advisory" class="nav-link" id="nav-advisory">Advisory</a></li>
             <li><a href="/dashboard" class="nav-link" id="nav-dashboard">Dashboard</a></li>
             <li><a href="/crops" class="nav-link" id="nav-crops">Crop Guide</a></li>
         </ul>
-        <div class="nav-model-badge" id="nav-accuracy-badge" title="Model Accuracy">
-            <span class="badge-dot"></span>
-            <span id="nav-r2">R² —</span>
+        <div class="nav-right">
+            <div class="menu-dropdown" id="menu-dropdown">
+                <button class="menu-toggle" id="mobile-menu-btn" aria-label="Open Menu" aria-expanded="false">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </button>
+                <div class="dropdown-panel" id="dropdown-panel" role="menu">
+                    <div class="dp-mobile-links">
+                        <a href="/" class="dp-link"><i class="ph-bold ph-house"></i> Home</a>
+                        <a href="/advisory" class="dp-link"><i class="ph-bold ph-plant"></i> Advisory</a>
+                        <a href="/dashboard" class="dp-link"><i class="ph-bold ph-chart-bar"></i> Dashboard</a>
+                        <a href="/crops" class="dp-link"><i class="ph-bold ph-tree"></i> Crop Guide</a>
+                        <div class="dp-divider"></div>
+                    </div>
+                    <div class="dp-item">
+                        <span class="dp-item-icon"><i class="ph-bold ph-chart-line-up"></i></span>
+                        <div class="dp-item-body">
+                            <span class="dp-item-label">Model Score</span>
+                            <div id="nav-accuracy-badge" class="nav-model-badge">
+                                <span class="badge-dot"></span>
+                                <span id="nav-r2">Loading R²…</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dp-item">
+                        <span class="dp-item-icon"><i class="ph-bold ph-translate"></i></span>
+                        <div class="dp-item-body">
+                            <span class="dp-item-label">Language</span>
+                            <div id="google_translate_element"></div>
+                        </div>
+                    </div>
+                    <button class="dp-item dp-about-btn" id="dp-about-btn">
+                        <span class="dp-item-icon"><i class="ph-bold ph-info"></i></span>
+                        <div class="dp-item-body">
+                            <span class="dp-item-label">About Us</span>
+                            <span class="dp-item-sub">Project &amp; Team</span>
+                        </div>
+                        <i class="ph-bold ph-arrow-right dp-arrow"></i>
+                    </button>
+                </div>
+            </div>
         </div>
     </nav>
 
+    <!-- About Us Modal -->
+    <div class="modal-overlay" id="about-modal" role="dialog" aria-modal="true">
+        <div class="modal-content" style="max-width:480px;">
+            <button class="close-btn" onclick="closeModal('about-modal')" aria-label="Close">&times;</button>
+            <div class="modal-icon">🌾</div>
+            <h2>About Harvestment</h2>
+            <p class="modal-meta">An Intelligent Agricultural Forecasting System for Gujarat</p>
+            <p style="font-size:0.9rem;color:var(--muted);line-height:1.7;margin-bottom:16px;">Harvestment combines <strong style="color:var(--text);">RandomForest + GradientBoosting</strong> ensemble models to deliver yield predictions, ROI analysis, and scenario planning across <strong style="color:var(--gold-light);">29 crops</strong> and <strong style="color:var(--gold-light);">32 districts</strong> of Gujarat — with live weather integration powered by Open-Meteo.</p>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin-bottom:16px;">
+                <div style="font-size:0.7rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">The Team</div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="display:flex;align-items:center;gap:12px;"><div class="team-avatar">TD</div><div><div class="team-name">Tanmay Dighade</div><div class="team-email"><a href="mailto:yoginitanmay3641@gmail.com">yoginitanmay3641@gmail.com</a></div></div></div>
+                    <div style="display:flex;align-items:center;gap:12px;"><div class="team-avatar">SV</div><div><div class="team-name">Suhani Vaghela</div><div class="team-email"><a href="mailto:suhanivaghela005@gmail.com">suhanivaghela005@gmail.com</a></div></div></div>
+                </div>
+            </div>
+            <div style="font-size:0.78rem;color:var(--muted);">Gandhinagar Institute of Technology · B.Tech CSE · 2022–2026</div>
+        </div>
+    </div>
+
     <!-- Dashboard -->
+    <!-- Empty state shown when dashboard is visited without a prediction -->
+    <div id="dashboard-empty-state" style="display:none; min-height:100vh; display:none; align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:40px 20px; padding-top:120px;">
+        <div style="font-size:64px; margin-bottom:24px;"><i class="ph-duotone ph-chart-line-up" style="font-size:72px; color:var(--gold);"></i></div>
+        <h2 style="font-size:1.6rem; font-weight:800; margin-bottom:12px;">No Prediction Yet</h2>
+        <p style="color:var(--muted); font-size:1rem; max-width:400px; margin:0 auto 28px; line-height:1.65;">You haven't run an advisory prediction yet. Fill in your farm details and get your AI-powered crop yield &amp; financial report.</p>
+        <a href="/advisory" style="background:var(--gold); color:#000; border:none; padding:13px 32px; font-size:0.95rem; font-weight:700; border-radius:50px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
+            <i class="ph-bold ph-lightning" style="font-size:18px;"></i> Get My Advisory
+        </a>
+    </div>
+
     <section class="section dashboard-section" id="dashboard-section" style="display:block;">
         <div class="container">
             <div class="section-header">
@@ -53,6 +121,7 @@
                 <div class="summary-item">
                     <span class="summary-label">Predicted Yield</span>
                     <strong id="strip-yield" class="summary-value gold">— t/ha</strong>
+                    <span id="strip-yield-range" class="summary-subval"></span>
                 </div>
                 <div class="summary-divider"></div>
                 <div class="summary-item">
@@ -81,61 +150,72 @@
                 <!-- Yield Card -->
                 <div class="feature-card" id="card-yield" onclick="openModal('yield-modal')">
                     <div class="card-glow card-glow-gold"></div>
-                    <div class="card-icon">🌾</div>
+                    <div class="card-icon"><i class="ph-duotone ph-leaf"></i></div>
                     <h3>Yield Prediction</h3>
                     <p>AI-predicted harvest quantity with pessimistic and optimistic confidence bands.</p>
                     <div class="card-preview" id="preview-yield">— t/ha</div>
-                    <span class="card-action">View Full Report →</span>
+                    <div id="preview-yield-range" style="font-size:0.78rem;color:var(--muted);margin-top:-10px;margin-bottom:14px;"></div>
+                    <span class="card-action">View Details <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                 </div>
 
                 <!-- Financial Card -->
                 <div class="feature-card" id="card-financial" onclick="openModal('financial-modal')">
                     <div class="card-glow card-glow-green"></div>
-                    <div class="card-icon">💰</div>
+                    <div class="card-icon" style="color:#4caf78;"><i class="ph-duotone ph-currency-inr"></i></div>
                     <h3>Financial Advisory</h3>
                     <p>Cost breakdown, revenue forecast, net profit, ROI, and breakeven analysis.</p>
                     <div class="card-preview" id="preview-profit">₹ —</div>
-                    <span class="card-action">View Full Report →</span>
+                    <span class="card-action">View Details <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                 </div>
 
                 <!-- Scenarios Card -->
                 <div class="feature-card" id="card-scenario" onclick="openModal('scenario-modal')">
                     <div class="card-glow card-glow-blue"></div>
-                    <div class="card-icon">📊</div>
+                    <div class="card-icon" style="color:#7986cb;"><i class="ph-duotone ph-chart-bar"></i></div>
                     <h3>Scenario Planning</h3>
                     <p>Compare pessimistic, expected, and optimistic profit outcomes across market conditions.</p>
                     <div class="card-preview" id="preview-scenario">3 Scenarios</div>
-                    <span class="card-action">View Chart →</span>
+                    <span class="card-action">View Chart <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                 </div>
 
                 <!-- Weather Card -->
                 <div class="feature-card" id="card-weather" onclick="openModal('weather-modal')">
                     <div class="card-glow card-glow-sky"></div>
-                    <div class="card-icon">🌤️</div>
+                    <div class="card-icon" style="color:#42a5f5;"><i class="ph-duotone ph-cloud-sun"></i></div>
                     <h3>Live Weather</h3>
                     <p>Current weather conditions blended with historical data to refine your forecast.</p>
                     <div class="card-preview" id="preview-weather">—°C</div>
-                    <span class="card-action">View Details →</span>
+                    <span class="card-action">View Details <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                 </div>
 
                 <!-- Cost Breakdown Card -->
                 <div class="feature-card" id="card-cost" onclick="openModal('cost-modal')">
                     <div class="card-glow card-glow-amber"></div>
-                    <div class="card-icon">📋</div>
+                    <div class="card-icon" style="color:#ff9800;"><i class="ph-duotone ph-receipt"></i></div>
                     <h3>Cost Breakdown</h3>
                     <p>Itemised input costs: seed, fertilizer, labour, irrigation, machinery and more.</p>
                     <div class="card-preview" id="preview-cost">₹ —</div>
-                    <span class="card-action">View Breakdown →</span>
+                    <span class="card-action">View Breakdown <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                 </div>
 
                 <!-- Breakeven Card -->
                 <div class="feature-card" id="card-breakeven" onclick="openModal('breakeven-modal')">
                     <div class="card-glow card-glow-red"></div>
-                    <div class="card-icon">⚖️</div>
+                    <div class="card-icon" style="color:#ef5350;"><i class="ph-duotone ph-scales"></i></div>
                     <h3>Breakeven Analysis</h3>
                     <p>Minimum yield required to cover all costs — with your current margin above it.</p>
                     <div class="card-preview" id="preview-breakeven">— t/ha</div>
-                    <span class="card-action">View Analysis →</span>
+                    <span class="card-action">View Analysis <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
+                </div>
+
+                <!-- Full Report Card -->
+                <div class="feature-card" id="card-report" onclick="openModal('report-modal')" style="border-color:rgba(232,160,32,0.3);">
+                    <div class="card-glow card-glow-gold"></div>
+                    <div class="card-icon" style="background:linear-gradient(135deg,rgba(232,160,32,0.18),rgba(232,160,32,0.04));border-color:rgba(232,160,32,0.3);"><i class="ph-duotone ph-file-text" style="color:var(--gold);"></i></div>
+                    <h3>Full Report</h3>
+                    <p>Complete advisory summary — all predictions, financials, scenarios and weather in one view.</p>
+                    <div class="card-preview" style="color:var(--gold);font-size:1rem;font-weight:700;">View All Results</div>
+                    <span class="card-action" style="color:var(--gold);">Open Report <i class="ph-bold ph-arrow-right" style="margin-left:4px;"></i></span>
                 </div>
             </div>
         </div>
@@ -144,9 +224,9 @@
     <footer class="site-footer">
         <div class="footer-main">
             <div class="footer-col">
-                <div class="footer-logo"><span class="logo-icon">🌾</span><span class="logo-text">Harvestment</span><span class="logo-badge">Gujarat AI</span></div>
+                <div class="footer-logo"><span class="logo-icon">🌾</span><span class="logo-text">Harvestment</span></div>
                 <p class="footer-brand-tagline">Harvestment: An Intelligent Agricultural Forecasting System for Gujarat's Small-Scale Farmers</p>
-                <span class="footer-project-badge">🎓 Final Year Project · 2025</span>
+                <span class="footer-project-badge">🎓 Final Year Project</span>
                 <div class="footer-about-box" style="margin-top:14px;"><strong>Reading results:</strong> Confidence reflects prediction band width. Wider band = higher uncertainty. Breakeven shows the minimum yield to cover all costs.</div>
             </div>
             <div class="footer-col">
@@ -185,8 +265,8 @@
     <!-- Yield Modal -->
     <div class="modal-overlay" id="yield-modal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('yield-modal')" aria-label="Close">✕</button>
-            <div class="modal-icon">🌾</div>
+            <button class="close-btn" onclick="closeModal('yield-modal')" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+            <div class="modal-icon"><i class="ph-duotone ph-leaf" style="color:var(--gold);"></i></div>
             <h2>Yield Prediction</h2>
             <p class="modal-meta" id="yield-meta">— · — · —</p>
 
@@ -235,8 +315,8 @@
     <!-- Financial Modal -->
     <div class="modal-overlay" id="financial-modal">
         <div class="modal-content modal-large">
-            <button class="close-btn" onclick="closeModal('financial-modal')" aria-label="Close">✕</button>
-            <div class="modal-icon">💰</div>
+            <button class="close-btn" onclick="closeModal('financial-modal')" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+            <div class="modal-icon"><i class="ph-duotone ph-currency-inr" style="color:#4caf78;"></i></div>
             <h2>Financial Advisory</h2>
             <p class="modal-meta" id="fin-meta">— · —</p>
 
@@ -286,8 +366,8 @@
     <!-- Scenario Modal -->
     <div class="modal-overlay" id="scenario-modal">
         <div class="modal-content modal-large">
-            <button class="close-btn" onclick="closeModal('scenario-modal')" aria-label="Close">✕</button>
-            <div class="modal-icon">📊</div>
+            <button class="close-btn" onclick="closeModal('scenario-modal')" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+            <div class="modal-icon"><i class="ph-duotone ph-chart-bar" style="color:#7986cb;"></i></div>
             <h2>Scenario Planning</h2>
             <p class="modal-meta">Profit comparison across weather and market conditions</p>
 
@@ -321,8 +401,8 @@
     <!-- Weather Modal -->
     <div class="modal-overlay" id="weather-modal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('weather-modal')" aria-label="Close">✕</button>
-            <div class="modal-icon">🌤️</div>
+            <button class="close-btn" onclick="closeModal('weather-modal')" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+            <div class="modal-icon"><i class="ph-duotone ph-cloud-sun" style="color:#42a5f5;"></i></div>
             <h2>Live Weather — <span id="res-district">—</span></h2>
             <p class="modal-meta">Real-time data from OpenWeatherMap, blended with district historical averages</p>
 
@@ -360,8 +440,8 @@
     <!-- Cost Breakdown Modal -->
     <div class="modal-overlay" id="cost-modal">
         <div class="modal-content modal-large">
-            <button class="close-btn" onclick="closeModal('cost-modal')" aria-label="Close">✕</button>
-            <div class="modal-icon">📋</div>
+            <button class="close-btn" onclick="closeModal('cost-modal')" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+            <div class="modal-icon"><i class="ph-duotone ph-receipt" style="color:#ff9800;"></i></div>
             <h2>Cost Breakdown</h2>
             <p class="modal-meta" id="cost-meta">Total cultivation cost for your farm</p>
 
@@ -378,8 +458,8 @@
     <!-- Breakeven Modal -->
     <div class="modal-overlay" id="breakeven-modal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('breakeven-modal')" aria-label="Close">✕</button>
-            <div class="modal-icon">⚖️</div>
+            <button class="close-btn" onclick="closeModal('breakeven-modal')" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+            <div class="modal-icon"><i class="ph-duotone ph-scales" style="color:#ef5350;"></i></div>
             <h2>Breakeven Analysis</h2>
             <p class="modal-meta">Minimum yield needed to cover all costs</p>
 
@@ -422,7 +502,116 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- FULL REPORT MODAL                                       -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="report-modal">
+        <div class="modal-content modal-large" style="max-width:800px;">
+            <button class="close-btn" onclick="closeModal('report-modal')" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+            <div class="modal-icon"><i class="ph-duotone ph-file-text" style="color:var(--gold);"></i></div>
+            <h2>Full Advisory Report</h2>
+            <p class="modal-meta" id="report-meta">— · — · —</p>
+
+            <!-- ── Section 1: Yield ── -->
+            <div class="report-section">
+                <div class="report-section-title"><i class="ph-duotone ph-leaf" style="color:var(--gold);"></i> Yield Prediction</div>
+                <div class="report-yield-range">
+                    <div class="report-range-item report-range-low">
+                        <span class="report-range-label">Pessimistic</span>
+                        <span class="report-range-val" id="rpt-min-yield">— t/ha</span>
+                        <span class="report-range-sub" id="rpt-min-total">— tonnes total</span>
+                    </div>
+                    <div class="report-range-item report-range-mid">
+                        <span class="report-range-label">Expected</span>
+                        <span class="report-range-val" id="rpt-pred-yield">— t/ha</span>
+                        <span class="report-range-sub" id="rpt-pred-total">— tonnes total</span>
+                    </div>
+                    <div class="report-range-item report-range-high">
+                        <span class="report-range-label">Optimistic</span>
+                        <span class="report-range-val" id="rpt-max-yield">— t/ha</span>
+                        <span class="report-range-sub" id="rpt-max-total">— tonnes total</span>
+                    </div>
+                </div>
+                <div class="data-grid-3" style="margin-top:12px;">
+                    <div class="data-box"><span class="label">Yield Category</span><strong class="value" id="rpt-yield-cat">—</strong></div>
+                    <div class="data-box"><span class="label">Confidence</span><strong class="value" id="rpt-confidence">—</strong></div>
+                    <div class="data-box"><span class="label">Production Range</span><strong class="value" id="rpt-prod-range" style="font-size:0.85rem;">— – — t</strong></div>
+                </div>
+            </div>
+
+            <!-- ── Section 2: Financials ── -->
+            <div class="report-section">
+                <div class="report-section-title"><i class="ph-duotone ph-currency-inr" style="color:#4caf78;"></i> Financial Summary</div>
+                <div class="data-grid-3">
+                    <div class="data-box"><span class="label">Total Cost</span><strong class="value" id="rpt-cost">—</strong></div>
+                    <div class="data-box"><span class="label">Gross Revenue</span><strong class="value" id="rpt-revenue">—</strong></div>
+                    <div class="data-box highlight-green"><span class="label">Net Profit</span><strong class="value" id="rpt-profit">—</strong></div>
+                    <div class="data-box"><span class="label">Market Price</span><strong class="value" id="rpt-msp">—</strong></div>
+                    <div class="data-box"><span class="label">Cost / ha</span><strong class="value" id="rpt-cost-ha">—</strong></div>
+                    <div class="data-box highlight-gold"><span class="label">ROI</span><strong class="value" id="rpt-roi">—</strong></div>
+                </div>
+            </div>
+
+            <!-- ── Section 3: Scenarios ── -->
+            <div class="report-section">
+                <div class="report-section-title"><i class="ph-duotone ph-chart-bar" style="color:#7986cb;"></i> Scenario Planning</div>
+                <div class="data-grid-3">
+                    <div class="data-box highlight-red">
+                        <span class="label">Pessimistic</span>
+                        <strong class="value" id="rpt-sc-pess">—</strong>
+                        <span class="label" id="rpt-sc-pess-roi" style="margin-top:4px;font-size:0.78rem;"></span>
+                    </div>
+                    <div class="data-box highlight-gold">
+                        <span class="label">Expected</span>
+                        <strong class="value" id="rpt-sc-exp">—</strong>
+                        <span class="label" id="rpt-sc-exp-roi" style="margin-top:4px;font-size:0.78rem;"></span>
+                    </div>
+                    <div class="data-box highlight-green">
+                        <span class="label">Optimistic</span>
+                        <strong class="value" id="rpt-sc-opt">—</strong>
+                        <span class="label" id="rpt-sc-opt-roi" style="margin-top:4px;font-size:0.78rem;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Section 4: Cost Breakdown ── -->
+            <div class="report-section">
+                <div class="report-section-title"><i class="ph-duotone ph-receipt" style="color:#ff9800;"></i> Cost Breakdown</div>
+                <div id="rpt-cost-table"></div>
+            </div>
+
+            <!-- ── Section 5: Breakeven ── -->
+            <div class="report-section">
+                <div class="report-section-title"><i class="ph-duotone ph-scales" style="color:#ef5350;"></i> Breakeven Analysis</div>
+                <div class="data-grid-3">
+                    <div class="data-box"><span class="label">Breakeven Yield</span><strong class="value" id="rpt-be-yield">—</strong></div>
+                    <div class="data-box"><span class="label">Your Predicted Yield</span><strong class="value" id="rpt-be-pred">—</strong></div>
+                    <div class="data-box" id="rpt-be-box"><span class="label">Safety Margin</span><strong class="value" id="rpt-be-margin">—</strong></div>
+                </div>
+            </div>
+
+            <!-- ── Section 6: Weather ── -->
+            <div class="report-section">
+                <div class="report-section-title"><i class="ph-duotone ph-cloud-sun" style="color:#42a5f5;"></i> Live Weather — <span id="rpt-district">—</span></div>
+                <div class="data-grid-3">
+                    <div class="data-box"><span class="label">Temperature</span><strong class="value" id="rpt-temp">—</strong></div>
+                    <div class="data-box"><span class="label">Humidity</span><strong class="value" id="rpt-hum">—</strong></div>
+                    <div class="data-box"><span class="label">Rainfall</span><strong class="value" id="rpt-rain">—</strong></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'en,gu,hi', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <script src="app.js"></script>
-    <script>document.getElementById('footer-year')?.append(new Date().getFullYear());</script>
+    <script>
+        document.getElementById('footer-year')?.append(new Date().getFullYear());
+    </script>
 </body>
 </html>

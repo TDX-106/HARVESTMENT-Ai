@@ -54,19 +54,56 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// ── NAVBAR SCROLL EFFECT ─────────────────────────────────
+// ── NAVBAR SCROLL EFFECT & DROPDOWN MENU ────────────────
 function initNavbar() {
+    // Scroll effect (throttled via rAF)
+    let scrollTicking = false;
     window.addEventListener("scroll", () => {
-        const nb = document.getElementById("navbar");
-        if (nb) nb.classList.toggle("scrolled", window.scrollY > 60);
+        if (!scrollTicking) {
+            scrollTicking = true;
+            requestAnimationFrame(() => {
+                const nb = document.getElementById("navbar");
+                if (nb) nb.classList.toggle("scrolled", window.scrollY > 20);
+                scrollTicking = false;
+            });
+        }
+    }, { passive: true });
+
+    // ── Dropdown toggle (click) ──────────────────────────
+    const menuDropdown = document.getElementById("menu-dropdown");
+    const menuBtn      = document.getElementById("mobile-menu-btn");
+    const dropPanel    = document.getElementById("dropdown-panel");
+
+    if (menuBtn && menuDropdown) {
+        menuBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isOpen = menuDropdown.classList.toggle("open");
+            menuBtn.setAttribute("aria-expanded", isOpen);
+        });
+    }
+    // Close when clicking outside
+    document.addEventListener("click", (e) => {
+        if (menuDropdown && !menuDropdown.contains(e.target)) {
+            menuDropdown.classList.remove("open");
+            menuBtn && menuBtn.setAttribute("aria-expanded", "false");
+        }
     });
 
-    // Active link highlight for multi-page navigation
+    // ── About Us modal ───────────────────────────────────
+    const aboutBtn = document.getElementById("dp-about-btn");
+    if (aboutBtn) {
+        aboutBtn.addEventListener("click", () => {
+            menuDropdown && menuDropdown.classList.remove("open");
+            openModal("about-modal");
+        });
+    }
+
+    // ── Active link highlight ────────────────────────────
     const path = (window.location.pathname || "/").toLowerCase();
-    const navHome     = document.getElementById("nav-home");
-    const navAdvisory = document.getElementById("nav-advisory");
-    const navDashboard= document.getElementById("nav-dashboard");
-    const navCrops    = document.getElementById("nav-crops");
+    const navHome      = document.getElementById("nav-home");
+    const navAdvisory  = document.getElementById("nav-advisory");
+    const navDashboard = document.getElementById("nav-dashboard");
+    const navCrops     = document.getElementById("nav-crops");
     [navHome, navAdvisory, navDashboard, navCrops].forEach(el => el && el.classList.remove("active"));
     if (path.endsWith("/advisory"))       navAdvisory?.classList.add("active");
     else if (path.endsWith("/dashboard")) navDashboard?.classList.add("active");
@@ -114,7 +151,7 @@ async function loadOptions() {
         const res  = await fetch(`${API}/options`);
         const opts = await res.json();
         populate("district",  opts.district);
-        populate("crop",      opts.Crop);
+        populate("crop",      opts.Crop ?? opts.crop);   // API uses capital 'C'
         populate("soil_type", opts.soil_type);
         // Season is handled by month wiring — don't auto-populate it
     } catch {
@@ -160,8 +197,7 @@ async function loadMetrics() {
         if (statR2 && r2 !== null) statR2.textContent = r2;
     } catch {
         // Metrics endpoint unavailable — keep badge hidden (already hidden via CSS)
-        if (navR2) navR2.textContent = "Model Live";
-        if (badge) badge.style.visibility = "visible";
+        // Do NOT show badge on error — it would be misleading
     }
 }
 
@@ -216,7 +252,9 @@ function showLoading(on) {
     if (ov) ov.classList.toggle("active", on);
     if (btn) btn.disabled = on;
     const btnText = document.getElementById("btn-text");
-    if (btnText) btnText.textContent = on ? "⏳ Analyzing…" : "🚀 Run AI Prediction";
+    if (btnText) btnText.innerHTML = on
+        ? '<i class="ph-duotone ph-spinner-gap" style="vertical-align:middle;font-size:18px;"></i> Analyzing…'
+        : '<i class="ph-bold ph-lightning" style="vertical-align:middle;font-size:18px;"></i> Run AI Prediction';
 }
 
 function tryLoadDashboardFromStorage() {
@@ -224,7 +262,14 @@ function tryLoadDashboardFromStorage() {
     try {
         raw = sessionStorage.getItem(STORAGE_KEY);
     } catch { /* ignore */ }
-    if (!raw) return;
+    if (!raw) {
+        // No prediction data — show a friendly empty state
+        const dash = document.getElementById("dashboard-section");
+        const emptyState = document.getElementById("dashboard-empty-state");
+        if (dash) dash.style.display = "none";
+        if (emptyState) emptyState.style.display = "block";
+        return;
+    }
     try {
         const data = JSON.parse(raw);
         lastData = data;
@@ -257,6 +302,8 @@ function populateAll(data) {
 
     // Summary strip
     document.getElementById("strip-yield").textContent      = `${data.predicted_yield} t/ha`;
+    const stripRange = document.getElementById("strip-yield-range");
+    if (stripRange) stripRange.textContent = `${data.min_yield} – ${data.max_yield} t/ha`;
     setColoredValue("strip-profit", fin.expected_net_profit_inr, true, true);
     document.getElementById("strip-roi").textContent        = `${fin.expected_roi_percent}%`;
     document.getElementById("strip-roi").style.color        = fin.expected_roi_percent >= 0 ? "var(--success)" : "var(--danger)";
@@ -265,6 +312,8 @@ function populateAll(data) {
 
     // Card previews
     document.getElementById("preview-yield").textContent    = `${data.predicted_yield} t/ha`;
+    const prevRange = document.getElementById("preview-yield-range");
+    if (prevRange) prevRange.textContent = `Range: ${data.min_yield} – ${data.max_yield} t/ha`;
     document.getElementById("preview-profit").textContent   = formatINR(fin.expected_net_profit_inr);
     document.getElementById("preview-cost").textContent     = formatINR(fin.total_cost_inr);
     document.getElementById("preview-weather").textContent  = `${wt.current_temp ?? "—"}°C`;
@@ -327,15 +376,105 @@ function populateAll(data) {
     renderBeBar(be.breakeven_yield_per_ha, data.predicted_yield, data.max_yield);
     const risk = be.breakeven_risk;
     document.getElementById("be-insight-text").textContent = risk
-        ? "⚠️ Your predicted yield is dangerously close to the breakeven threshold. Consider reducing input costs or boosting irrigation."
-        : `✅ Your predicted yield (${data.predicted_yield} t/ha) is ${be.margin_above_breakeven_tha} t/ha above the breakeven point. You are in the profit zone.`;
+        ? "\u26a0\ufe0f Your predicted yield is dangerously close to the breakeven threshold. Consider reducing input costs or boosting irrigation."
+        : `\u2705 Your predicted yield (${data.predicted_yield} t/ha) is ${be.margin_above_breakeven_tha} t/ha above the breakeven point. You are in the profit zone.`;
     document.getElementById("be-box-risk").className = "data-box " + (risk ? "highlight-red" : "highlight-green");
+
+    // ── FULL REPORT MODAL ─────────────────────────────────
+    populateReportModal(data);
+}
+
+// ── FULL REPORT MODAL POPULATION ─────────────────────────
+function populateReportModal(data) {
+    if (!data) return;
+
+    const fin = data?.financials?.financial_summary || {};
+    const be  = data?.financials?.breakeven        || {};
+    const sc  = data?.financials?.scenarios        || {};
+    const cd  = data?.financials?.cost_breakdown   || {};
+    const wt  = data?.live_weather                 || {};
+    const area = parseFloat(data.area_ha) || 1;
+
+    // Meta header
+    setText('report-meta', `${data.crop || '—'} · ${data.district || '—'} · ${data.season || '—'} · ${data.area_ha || '—'} ha`);
+
+    // ─ Yield ────────────────────────────────────────────────
+const minY  = data.min_yield        ?? '—';
+    const predY = data.predicted_yield  ?? '—';
+    const maxY  = data.max_yield        ?? '—';
+    setText('rpt-min-yield',  `${minY} t/ha`);
+    setText('rpt-pred-yield', `${predY} t/ha`);
+    setText('rpt-max-yield',  `${maxY} t/ha`);
+    const minTot  = (typeof minY  === 'number') ? (minY  * area).toFixed(2) : '—';
+    const predTot = data.total_predicted ?? ((typeof predY === 'number') ? (predY * area).toFixed(2) : '—');
+    const maxTot  = (typeof maxY  === 'number') ? (maxY  * area).toFixed(2) : '—';
+    setText('rpt-min-total',  `${minTot} tonnes total`);
+    setText('rpt-pred-total', `${predTot} tonnes total`);
+    setText('rpt-max-total',  `${maxTot} tonnes total`);
+    setText('rpt-yield-cat',  data.yield_category  || '—');
+    setText('rpt-confidence', data.confidence      || '—');
+    const totalMin = data.total_min ?? minTot;
+    const totalMax = data.total_max ?? maxTot;
+    setText('rpt-prod-range', `${totalMin} – ${totalMax} t`);
+
+    // ─ Financials ───────────────────────────────────────────
+    setText('rpt-cost',    formatINR(fin.total_cost_inr));
+    setText('rpt-revenue', formatINR(fin.expected_gross_revenue_inr));
+    if (fin.market_price_per_tonne_inr != null)
+        setText('rpt-msp', `₹${fin.market_price_per_tonne_inr.toLocaleString('en-IN')}`);
+    if (fin.cost_per_ha_inr != null)
+        setText('rpt-cost-ha', `₹${fin.cost_per_ha_inr.toLocaleString('en-IN')}`);
+    if (fin.expected_net_profit_inr != null) setColoredValue('rpt-profit', fin.expected_net_profit_inr, true);
+    if (fin.expected_roi_percent    != null) setColoredValue('rpt-roi',    fin.expected_roi_percent, false, false, '%');
+
+    // ─ Scenarios ────────────────────────────────────────────
+    const fillRptSc = (key, s) => {
+        if (!s) return;
+        setText(`rpt-sc-${key}`,     formatINR(s.net_profit_inr));
+        setText(`rpt-sc-${key}-roi`, `ROI: ${s.roi_percent ?? '—'}%`);
+    };
+    fillRptSc('pess', sc.pessimistic);
+    fillRptSc('exp',  sc.expected);
+    fillRptSc('opt',  sc.optimistic);
+
+    // ─ Cost breakdown table ───────────────────────────────
+    const ct = document.getElementById('rpt-cost-table');
+    if (ct && cd && Object.keys(cd).length) {
+        const max = Math.max(...Object.values(cd));
+        ct.innerHTML = Object.entries(cd).map(([label, amount]) => {
+            const pct = Math.round((amount / max) * 100);
+            return `<div class="cost-row">
+                <span class="cost-row-label">${label}</span>
+                <div class="cost-row-bar"><div class="cost-row-fill" style="width:${pct}%"></div></div>
+                <span class="cost-row-amount">₹${amount.toLocaleString('en-IN', {maximumFractionDigits:0})}</span>
+            </div>`;
+        }).join('');
+    }
+
+    // ─ Breakeven ────────────────────────────────────────────
+    setText('rpt-be-yield',  be.breakeven_yield_per_ha    ? `${be.breakeven_yield_per_ha} t/ha`    : '—');
+    setText('rpt-be-pred',   data.predicted_yield          ? `${data.predicted_yield} t/ha`         : '—');
+    setText('rpt-be-margin', be.margin_above_breakeven_tha ? `${be.margin_above_breakeven_tha} t/ha` : '—');
+    const beBox = document.getElementById('rpt-be-box');
+    if (beBox) beBox.className = 'data-box ' + (be.breakeven_risk ? 'highlight-red' : 'highlight-green');
+
+    // ─ Weather ───────────────────────────────────────────────
+setText('rpt-district', data.district || '—');
+    setText('rpt-temp', wt.current_temp  != null ? `${wt.current_temp}°C`   : '—');
+    setText('rpt-hum',  wt.humidity_avg  != null ? `${wt.humidity_avg}%`    : '—');
+    setText('rpt-rain', wt.current_rain_mm != null ? `${wt.current_rain_mm} mm/h` : '—');
+}
+
+function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
 }
 
 // ── HELPERS ───────────────────────────────────────────────
 function formatINR(v) {
     if (v == null) return "₹—";
-    return "₹" + Math.abs(v).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+    const abs = Math.abs(v).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+    return (v < 0 ? "−₹" : "₹") + abs;
 }
 
 function setColoredValue(id, val, rupee = false, large = false, suffix = "") {
@@ -448,5 +587,11 @@ function renderCostChart(breakdown) {
 
 
 // ── MODAL HELPERS ─────────────────────────────────────────
-function openModal(id)  { document.getElementById(id).classList.add("active"); }
-function closeModal(id) { document.getElementById(id).classList.remove("active"); }
+function openModal(id) {
+    // Re-populate report modal fresh every time it is opened
+    if (id === 'report-modal' && lastData) {
+        try { populateReportModal(lastData); } catch(e) { console.error('Report modal error:', e); }
+    }
+    document.getElementById(id)?.classList.add('active');
+}
+function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }

@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 warnings.filterwarnings("ignore")
 
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, HistGradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import cross_val_score, train_test_split
@@ -75,10 +75,18 @@ def load_and_clean(filepath: str) -> pd.DataFrame:
         if col in df.columns:
             df[col].fillna(df[col].mode()[0], inplace=True)
 
-    # Fill numerical nulls with median
-    for col in ["soil_fertility_score", "irrigation_score", "Production"]:
+    # Fill numerical nulls with median PER CROP (much more accurate than global median)
+    for col in ["soil_fertility_score", "irrigation_score"]:
         if col in df.columns:
+            df[col] = df.groupby("Crop")[col].transform(
+                lambda x: x.fillna(x.median())
+            )
+            # Fall back to global median for any remaining nulls
             df[col].fillna(df[col].median(), inplace=True)
+
+    # Fill Production nulls
+    if "Production" in df.columns:
+        df["Production"].fillna(df["Production"].median(), inplace=True)
 
     # Remove rows with zero/negative yield (data entry errors)
     df = df[df[TARGET] > 0].copy()
@@ -87,7 +95,7 @@ def load_and_clean(filepath: str) -> pd.DataFrame:
     print(f"  Loaded  : {original_rows:,} rows")
     print(f"  Removed : {removed} zero-yield rows")
     print(f"  Clean   : {len(df):,} rows")
-    print(f"  Crops   : {df['Crop'].nunique()} | Districts: {df['district'].nunique()} | Years: {sorted(df['Year'].unique())}")
+    print(f"  Crops   : {df['Crop'].nunique()} | Districts: {df['district'].nunique()}")
     return df
 
 
@@ -119,43 +127,69 @@ def encode_features(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, dict]:
 
 def train_models(X_train: np.ndarray, y_train: np.ndarray):
     """
-    Train all three models and return them.
-    Uses log1p(yield) to handle the large scale variance across crops
-    (e.g. Sugarcane ~65 t/ha vs Guar ~0.69 t/ha).
+    Train three models:
+      1. RandomForestRegressor (central prediction) — tuned with per-crop
+         sample weighting to handle scale imbalance across crops.
+      2. GradientBoostingRegressor (10th percentile lower bound)
+      3. GradientBoostingRegressor (90th percentile upper bound)
+    Uses log1p(yield) to handle large scale variance across crops.
     Predictions are converted back with expm1() at inference time.
     """
+    from sklearn.ensemble import ExtraTreesRegressor
+
     print("\n  [1/3] Fitting imputer ...")
     imputer = SimpleImputer(strategy="median")
-    X_train = imputer.fit_transform(X_train)
+    X_train_imp = imputer.fit_transform(X_train)
 
-    # Log-transform the target
+    # Log-transform the target to normalise scale
     y_log = np.log1p(y_train)
 
-    print("  [2/3] Training HistGradientBoosting on log(yield) ...")
-    rf = HistGradientBoostingRegressor(
-        max_iter=500,
-        learning_rate=0.05,
-        random_state=42,
-    )
-    rf.fit(X_train, y_log)
+    # Per-crop sample weighting: give more weight to crops with fewer rows
+    # so the RF doesn't bias toward high-density crops (e.g. Groundnut)
+    crop_col = X_train_imp[:, 1]  # Crop is index 1 in CATEGORICAL_COLS
+    unique_crops, counts = np.unique(crop_col, return_counts=True)
+    freq_map = dict(zip(unique_crops, counts))
+    max_count = max(counts)
+    sample_weights = np.array([max_count / freq_map[c] for c in crop_col])
+    sample_weights = np.sqrt(sample_weights)  # Soften the weighting
 
-    print("  [3/3] Training quantile HistGradientBoosting models on log(yield) ...")
-    gbm_low = HistGradientBoostingRegressor(
+    print("  [2/3] Training RandomForest (with crop-weighted sampling) ...")
+    rf = RandomForestRegressor(
+        n_estimators=600,
+        max_depth=None,
+        min_samples_split=3,
+        min_samples_leaf=1,
+        max_features=0.6,
+        n_jobs=-1,
+        random_state=42,
+        oob_score=True,
+    )
+    rf.fit(X_train_imp, y_log, sample_weight=sample_weights)
+    print(f"     RF OOB R2 (log scale): {rf.oob_score_:.4f}")
+
+    print("  [3/3] Training GradientBoosting quantile models on log(yield) ...")
+    gbm_low = GradientBoostingRegressor(
         loss="quantile",
-        quantile=LOWER_ALPHA,
-        max_iter=300,
-        learning_rate=0.05,
+        alpha=LOWER_ALPHA,
+        n_estimators=500,
+        learning_rate=0.04,
+        max_depth=6,
+        min_samples_leaf=3,
+        subsample=0.8,
         random_state=42,
     )
-    gbm_high = HistGradientBoostingRegressor(
+    gbm_high = GradientBoostingRegressor(
         loss="quantile",
-        quantile=UPPER_ALPHA,
-        max_iter=300,
-        learning_rate=0.05,
+        alpha=UPPER_ALPHA,
+        n_estimators=500,
+        learning_rate=0.04,
+        max_depth=6,
+        min_samples_leaf=3,
+        subsample=0.8,
         random_state=42,
     )
-    gbm_low.fit(X_train, y_log)
-    gbm_high.fit(X_train, y_log)
+    gbm_low.fit(X_train_imp, y_log)
+    gbm_high.fit(X_train_imp, y_log)
 
     return rf, gbm_low, gbm_high, imputer
 
@@ -167,6 +201,7 @@ def train_models(X_train: np.ndarray, y_train: np.ndarray):
 def evaluate(
     rf, gbm_low, gbm_high, imputer,
     X_test: np.ndarray, y_test: np.ndarray,
+    df_test: pd.DataFrame = None,
 ) -> dict:
     """Return a dict of evaluation metrics."""
     X_test_imp = imputer.transform(X_test)
@@ -187,12 +222,22 @@ def evaluate(
     coverage = float(((y_test >= y_low) & (y_test <= y_high)).mean())
     avg_width = float((y_high - y_low).mean())
 
+    # Per-crop MAE
+    per_crop_mae = {}
+    if df_test is not None:
+        tmp = df_test.copy()
+        tmp["pred"] = y_pred
+        tmp["err"]  = np.abs(y_pred - y_test)
+        for crop, g in tmp.groupby("Crop"):
+            per_crop_mae[crop] = round(float(g["err"].mean()), 3)
+
     metrics = {
         "MAE":        round(mae, 4),
         "RMSE":       round(rmse, 4),
         "R2":         round(r2, 4),
-        "Coverage":   round(coverage, 4),   # % actual yields inside [min, max]
-        "Avg_width":  round(avg_width, 4),  # average (max - min) band width t/ha
+        "Coverage":   round(coverage, 4),
+        "Avg_width":  round(avg_width, 4),
+        "per_crop_mae": per_crop_mae,
     }
     return metrics
 
@@ -221,10 +266,14 @@ def save_artifacts(rf, gbm_low, gbm_high, imputer, encoders, metrics):
         f.write("MODEL: HistGradientBoosting (central prediction)\n")
         f.write(f"  MAE  : {metrics['MAE']} tonnes/ha\n")
         f.write(f"  RMSE : {metrics['RMSE']} tonnes/ha\n")
-        f.write(f"  R²   : {metrics['R2']}\n\n")
+        f.write(f"R²   : {metrics['R2']}\n\n")
         f.write("QUANTILE INTERVAL [10th – 90th percentile]\n")
         f.write(f"  Coverage  : {metrics['Coverage']*100:.1f}% actual yields inside band\n")
         f.write(f"  Avg width : {metrics['Avg_width']} tonnes/ha\n")
+        if metrics.get('per_crop_mae'):
+            f.write("\nPER-CROP MAE (t/ha):\n")
+            for crop, mae in sorted(metrics['per_crop_mae'].items()):
+                f.write(f"  {crop:<30} {mae}\n")
 
     print(f"\n  Artifacts saved to ./{SAVE_DIR}/")
     print(f"  Training report  : {report_path}")
@@ -247,16 +296,26 @@ def main():
     print(f"  Feature matrix: {X.shape[0]} rows × {X.shape[1]} columns")
 
     print("\n══ STEP 3: Train/Test Split ══════════════════════════")
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
+    # Stratify by Crop so every crop is proportionally represented in test set
+    # For crops with very few rows, fall back to ungrouped split
+    try:
+        X_train, X_test, y_train, y_test, idx_train, idx_test = train_test_split(
+            X, y, df.index, test_size=0.2, random_state=42, stratify=df["Crop"]
+        )
+        print("  Stratified split by Crop ✓")
+    except ValueError:
+        X_train, X_test, y_train, y_test, idx_train, idx_test = train_test_split(
+            X, y, df.index, test_size=0.2, random_state=42
+        )
+        print("  Random split (stratify not possible) ✓")
     print(f"  Train: {len(X_train)} rows  |  Test: {len(X_test)} rows")
 
     print("\n══ STEP 4: Train Models ══════════════════════════════")
     rf, gbm_low, gbm_high, imputer = train_models(X_train, y_train)
 
     print("\n══ STEP 5: Evaluate ══════════════════════════════════")
-    metrics = evaluate(rf, gbm_low, gbm_high, imputer, X_test, y_test)
+    df_test = df.loc[idx_test].copy()
+    metrics = evaluate(rf, gbm_low, gbm_high, imputer, X_test, y_test, df_test)
     print(f"  HistGradientBoosting  → MAE: {metrics['MAE']}  RMSE: {metrics['RMSE']}  R²: {metrics['R2']}")
     print(f"  Quantile band → Coverage: {metrics['Coverage']*100:.1f}%  Avg width: {metrics['Avg_width']} t/ha")
 
