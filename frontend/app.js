@@ -10,6 +10,203 @@ let costChart     = null;
 let lastData      = null;
 
 const STORAGE_KEY = "harvestment:lastPrediction";
+const HISTORY_KEY = "harvestment:history";
+const HISTORY_MAX = 10;
+
+function historyFingerprint(data) {
+    if (!data) return "";
+    return [
+        data.district,
+        data.crop,
+        data.season,
+        data.area_ha,
+        data.predicted_yield,
+        data.financials?.financial_summary?.expected_net_profit_inr,
+    ].join("|");
+}
+
+function loadHistory() {
+    try {
+        const raw = localStorage.getItem(HISTORY_KEY);
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return [];
+
+        // Normalize legacy/incorrect formats:
+        // - old entries might be stored as the prediction object itself
+        // - entry.data might be a JSON string
+        // - entry might be missing savedAt
+        return arr.map((entry) => {
+            // Prediction object stored directly
+            if (entry && typeof entry === "object" && ("crop" in entry || "district" in entry) && !("data" in entry)) {
+                return { savedAt: new Date().toISOString(), data: entry };
+            }
+
+            if (!entry || typeof entry !== "object") return null;
+
+            let data = entry.data;
+            if (typeof data === "string") {
+                try { data = JSON.parse(data); } catch { /* ignore */ }
+            }
+
+            const savedAt = typeof entry.savedAt === "string" ? entry.savedAt : new Date().toISOString();
+            if (!data || typeof data !== "object") return null;
+
+            return { savedAt, data };
+        }).filter(Boolean);
+    } catch {
+        return [];
+    }
+}
+
+function saveHistory(history) {
+    try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch { /* quota or private mode */ }
+}
+
+function persistPrediction(data) {
+    const json = JSON.stringify(data);
+    try {
+        sessionStorage.setItem(STORAGE_KEY, json);
+    } catch { /* ignore */ }
+    try {
+        localStorage.setItem(STORAGE_KEY, json);
+    } catch { /* ignore */ }
+
+    let hist = loadHistory();
+    const fp = historyFingerprint(data);
+    if (hist.length && historyFingerprint(hist[0].data) === fp) {
+        hist[0] = { savedAt: new Date().toISOString(), data };
+    } else {
+        hist.unshift({ savedAt: new Date().toISOString(), data });
+    }
+    hist = hist.slice(0, HISTORY_MAX);
+    saveHistory(hist);
+}
+
+function formatRelativeTime(iso) {
+    if (!iso) return "";
+    const t = new Date(iso).getTime();
+    if (Number.isNaN(t)) return "";
+    const diff = Date.now() - t;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function renderPrevAdvisories(activeFp) {
+    const section = document.getElementById("prev-advisory-section");
+    const list = document.getElementById("prev-searches-list");
+    if (!section || !list) return;
+
+    const hist = loadHistory().filter(e => e?.data && typeof e.data === "object" && (e.data.crop || e.data.district));
+    if (!hist.length) {
+        section.style.display = "none";
+        list.innerHTML = "";
+        return;
+    }
+
+    // Show only the immediately previous prediction (not the entire history).
+    // "Previous" is defined as: the most recent history entry that is NOT the current one.
+    const fpActive = activeFp || (lastData ? historyFingerprint(lastData) : "");
+    const prevEntry = fpActive
+        ? (hist.find(e => historyFingerprint(e?.data) !== fpActive) || null)
+        : (hist[0] || null);
+
+    if (!prevEntry?.data) {
+        section.style.display = "none";
+        list.innerHTML = "";
+        return;
+    }
+
+    section.style.display = "block";
+
+    const d = prevEntry.data;
+    const label = `${d.crop || "—"} · ${d.district || "—"}`;
+    const sub = `${d.crop || "—"} · ${d.district || "—"} · ${d.season || "—"} · ${d.area_ha ?? "—"} ha`;
+
+    list.innerHTML = `<div class="prev-search-chip is-readonly" role="listitem">
+        <span class="prev-chip-main">${escapeHtml(label)}</span>
+        <span class="prev-chip-meta">${escapeHtml(sub)} · ${escapeHtml(formatRelativeTime(prevEntry.savedAt))}</span>
+    </div>`;
+
+    // Populate the full previous dashboard card previews
+    populatePreviousSection(d);
+}
+
+function populatePreviousSection(data) {
+    if (!data) return;
+    const fin = data?.financials?.financial_summary || {};
+    const be  = data?.financials?.breakeven || {};
+    const wt  = data?.live_weather || {};
+
+    // Summary strip (previous)
+    const elYield = document.getElementById("prev-strip-yield");
+    if (elYield) elYield.textContent = `${data.predicted_yield ?? "—"} t/ha`;
+    const elRange = document.getElementById("prev-strip-yield-range");
+    if (elRange) elRange.textContent = `${data.min_yield ?? "—"} – ${data.max_yield ?? "—"} t/ha`;
+    setColoredValue("prev-strip-profit", fin.expected_net_profit_inr ?? 0, true, true);
+
+    const elRoi = document.getElementById("prev-strip-roi");
+    if (elRoi) {
+        const roi = fin.expected_roi_percent;
+        elRoi.textContent = roi != null ? `${roi}%` : "—";
+        elRoi.style.color = (roi ?? 0) >= 0 ? "var(--success)" : "var(--danger)";
+    }
+    const elTemp = document.getElementById("prev-strip-temp");
+    if (elTemp) elTemp.textContent = `${wt.current_temp ?? "—"}°C`;
+    const elConf = document.getElementById("prev-strip-confidence");
+    if (elConf) elConf.textContent = data.confidence ?? "—";
+
+    // Card previews (previous)
+    const pYield = document.getElementById("prev-preview-yield");
+    if (pYield) pYield.textContent = `${data.predicted_yield ?? "—"} t/ha`;
+    const pYieldRange = document.getElementById("prev-preview-yield-range");
+    if (pYieldRange) pYieldRange.textContent = `Range: ${data.min_yield ?? "—"} – ${data.max_yield ?? "—"} t/ha`;
+
+    const pProfit = document.getElementById("prev-preview-profit");
+    if (pProfit) pProfit.textContent = formatINR(fin.expected_net_profit_inr);
+    const pCost = document.getElementById("prev-preview-cost");
+    if (pCost) pCost.textContent = formatINR(fin.total_cost_inr);
+    const pWeather = document.getElementById("prev-preview-weather");
+    if (pWeather) pWeather.textContent = `${wt.current_temp ?? "—"}°C`;
+    const pBe = document.getElementById("prev-preview-breakeven");
+    if (pBe) pBe.textContent = `${be.breakeven_yield_per_ha ?? "—"} t/ha`;
+}
+
+function escapeHtml(s) {
+    if (s == null) return "";
+    const t = document.createElement("template");
+    t.textContent = String(s);
+    return t.innerHTML;
+}
+
+function applyHistoryEntry(data) {
+    lastData = data;
+    const json = JSON.stringify(data);
+    try {
+        sessionStorage.setItem(STORAGE_KEY, json);
+    } catch { /* ignore */ }
+    try {
+        localStorage.setItem(STORAGE_KEY, json);
+    } catch { /* ignore */ }
+
+    const emptyState = document.getElementById("dashboard-empty-state");
+    const dash = document.getElementById("dashboard-section");
+    if (emptyState) emptyState.style.display = "none";
+    if (dash) dash.style.display = "block";
+
+    populateAll(data);
+    showDashboard(data);
+    renderPrevAdvisories(historyFingerprint(data));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
 // ── MONTH → SEASON MAPPING ────────────────────────────
 // Kharif: June–October (monsoon sowing)
@@ -233,9 +430,7 @@ async function handleSubmit(e) {
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
         lastData = data;
-        try {
-            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        } catch { /* ignore */ }
+        persistPrediction(data);
         window.location.href = "/dashboard";
     } catch (err) {
         alert("❌ Could not reach the backend.\n\nMake sure the API is running:\n  python -m uvicorn api:app --reload --port 8000\n\n" + err.message);
@@ -263,11 +458,24 @@ function tryLoadDashboardFromStorage() {
         raw = sessionStorage.getItem(STORAGE_KEY);
     } catch { /* ignore */ }
     if (!raw) {
-        // No prediction data — show a friendly empty state
+        try {
+            raw = localStorage.getItem(STORAGE_KEY);
+        } catch { /* ignore */ }
+    }
+    if (!raw) {
+        const hist = loadHistory();
+        if (hist.length && hist[0].data) {
+            try {
+                raw = JSON.stringify(hist[0].data);
+            } catch { /* ignore */ }
+        }
+    }
+    if (!raw) {
         const dash = document.getElementById("dashboard-section");
         const emptyState = document.getElementById("dashboard-empty-state");
         if (dash) dash.style.display = "none";
         if (emptyState) emptyState.style.display = "block";
+        renderPrevAdvisories();
         return;
     }
     try {
@@ -275,8 +483,13 @@ function tryLoadDashboardFromStorage() {
         lastData = data;
         populateAll(data);
         showDashboard(data);
+        renderPrevAdvisories(historyFingerprint(data));
     } catch {
-        // ignore bad storage
+        const dash = document.getElementById("dashboard-section");
+        const emptyState = document.getElementById("dashboard-empty-state");
+        if (dash) dash.style.display = "none";
+        if (emptyState) emptyState.style.display = "block";
+        renderPrevAdvisories();
     }
 }
 

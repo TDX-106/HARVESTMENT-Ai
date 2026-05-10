@@ -6,7 +6,7 @@
     <title>Harvestment | Dashboard</title>
     <meta name="description" content="Harvestment dashboard showing yield prediction, financial advisory, scenarios, weather and breakeven analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=17">
+    <link rel="stylesheet" href="/styles.css?v=18">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
@@ -218,6 +218,98 @@
                     <span class="card-action" style="color:var(--gold);">Open Report <i class="ph-bold ph-arrow-right" style="margin-left:4px;"></i></span>
                 </div>
             </div>
+
+            <!-- Previous advisory -->
+            <section class="prev-advisory-wrap" id="prev-advisory-section" style="display:none;" aria-label="Previous advisory">
+                <div class="prev-searches-panel">
+                    <div class="prev-searches-head">
+                        <h3 class="prev-searches-title"><i class="ph-bold ph-clock-counter-clockwise"></i> Previous advisory</h3>
+                        
+                    </div>
+                    <div class="prev-searches-list" id="prev-searches-list" role="list" style="margin-bottom:14px;"></div>
+
+                    <!-- Previous summary strip -->
+                    <div class="summary-strip prev-summary-strip" id="prev-summary-strip">
+                        <div class="summary-item">
+                            <span class="summary-label">Predicted Yield</span>
+                            <strong id="prev-strip-yield" class="summary-value gold">— t/ha</strong>
+                            <span id="prev-strip-yield-range" class="summary-subval"></span>
+                        </div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-item">
+                            <span class="summary-label">Net Profit</span>
+                            <strong id="prev-strip-profit" class="summary-value">—</strong>
+                        </div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-item">
+                            <span class="summary-label">ROI</span>
+                            <strong id="prev-strip-roi" class="summary-value">—</strong>
+                        </div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-item">
+                            <span class="summary-label">Live Temp</span>
+                            <strong id="prev-strip-temp" class="summary-value">—</strong>
+                        </div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-item">
+                            <span class="summary-label">Model Confidence</span>
+                            <strong id="prev-strip-confidence" class="summary-value">—</strong>
+                        </div>
+                    </div>
+
+                    <!-- Previous cards grid (read-only) -->
+                    <div class="cards-grid prev-cards-grid">
+                        <div class="feature-card prev-card" id="prev-card-yield">
+                            <div class="card-glow card-glow-gold"></div>
+                            <div class="card-icon"><i class="ph-duotone ph-leaf"></i></div>
+                            <h3>Yield Prediction</h3>
+                            <p>Previous run — predicted harvest quantity with confidence bands.</p>
+                            <div class="card-preview" id="prev-preview-yield">— t/ha</div>
+                            <div id="prev-preview-yield-range" style="font-size:0.78rem;color:var(--muted);margin-top:-10px;margin-bottom:14px;"></div>
+                        </div>
+
+                        <div class="feature-card prev-card" id="prev-card-financial">
+                            <div class="card-glow card-glow-green"></div>
+                            <div class="card-icon" style="color:#4caf78;"><i class="ph-duotone ph-currency-inr"></i></div>
+                            <h3>Financial Advisory</h3>
+                            <p>Previous run — net profit, ROI, cost and revenue snapshot.</p>
+                            <div class="card-preview" id="prev-preview-profit">₹ —</div>
+                        </div>
+
+                        <div class="feature-card prev-card" id="prev-card-scenario">
+                            <div class="card-glow card-glow-blue"></div>
+                            <div class="card-icon" style="color:#7986cb;"><i class="ph-duotone ph-chart-bar"></i></div>
+                            <h3>Scenario Planning</h3>
+                            <p>Previous run — pessimistic, expected, optimistic outcomes.</p>
+                            <div class="card-preview" id="prev-preview-scenario">3 Scenarios</div>
+                        </div>
+
+                        <div class="feature-card prev-card" id="prev-card-weather">
+                            <div class="card-glow card-glow-sky"></div>
+                            <div class="card-icon" style="color:#42a5f5;"><i class="ph-duotone ph-cloud-sun"></i></div>
+                            <h3>Live Weather</h3>
+                            <p>Previous run — captured live weather snapshot.</p>
+                            <div class="card-preview" id="prev-preview-weather">—°C</div>
+                        </div>
+
+                        <div class="feature-card prev-card" id="prev-card-cost">
+                            <div class="card-glow card-glow-amber"></div>
+                            <div class="card-icon" style="color:#ff9800;"><i class="ph-duotone ph-receipt"></i></div>
+                            <h3>Cost Breakdown</h3>
+                            <p>Previous run — total cultivation cost estimate.</p>
+                            <div class="card-preview" id="prev-preview-cost">₹ —</div>
+                        </div>
+
+                        <div class="feature-card prev-card" id="prev-card-breakeven">
+                            <div class="card-glow card-glow-red"></div>
+                            <div class="card-icon" style="color:#ef5350;"><i class="ph-duotone ph-scales"></i></div>
+                            <h3>Breakeven Analysis</h3>
+                            <p>Previous run — minimum yield required to cover costs.</p>
+                            <div class="card-preview" id="prev-preview-breakeven">— t/ha</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </section>
 
@@ -609,7 +701,7 @@
         }
     </script>
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=21"></script>
     <script>
         document.getElementById('footer-year')?.append(new Date().getFullYear());
     </script>
