@@ -9,19 +9,45 @@ let scenarioChart = null;
 let costChart     = null;
 let lastData      = null;
 
+/** Snapshot used for the "Previous advisory" cards + modals (from localStorage history). */
+let previousSectionData   = null;
+/** Entries shown as chips: all saved runs except the one matching the current dashboard. */
+let previousAdvisoryOptions = [];
+
 const STORAGE_KEY = "harvestment:lastPrediction";
 const HISTORY_KEY = "harvestment:history";
-const HISTORY_MAX = 10;
+/** Full prediction objects for each run (localStorage). */
+const HISTORY_MAX = 25;
+
+/** Align stored / legacy API keys so UI always reads crop, district, season, area_ha. */
+function normalizeStoredPrediction(d) {
+    if (!d || typeof d !== "object") return d;
+    const out = { ...d };
+    if (out.crop == null && out.Crop != null) out.crop = out.Crop;
+    if (out.district == null && out.District != null) out.district = out.District;
+    if (out.season == null && out.Season != null) out.season = out.Season;
+    if (out.area_ha == null && out.area != null) out.area_ha = Number(out.area);
+    if (out.area_ha == null && out.Area != null) out.area_ha = Number(out.Area);
+    return out;
+}
+
+/** Same single-line summary as Full Report modal (`#report-meta`). */
+function advisoryMetaLine(d) {
+    const n = normalizeStoredPrediction(d);
+    if (!n || typeof n !== "object") return "— · — · — · — ha";
+    return `${n.crop || "—"} · ${n.district || "—"} · ${n.season || "—"} · ${n.area_ha ?? "—"} ha`;
+}
 
 function historyFingerprint(data) {
     if (!data) return "";
+    const n = normalizeStoredPrediction(data);
     return [
-        data.district,
-        data.crop,
-        data.season,
-        data.area_ha,
-        data.predicted_yield,
-        data.financials?.financial_summary?.expected_net_profit_inr,
+        n.district,
+        n.crop,
+        n.season,
+        n.area_ha,
+        n.predicted_yield,
+        n.financials?.financial_summary?.expected_net_profit_inr,
     ].join("|");
 }
 
@@ -37,9 +63,21 @@ function loadHistory() {
         // - entry.data might be a JSON string
         // - entry might be missing savedAt
         return arr.map((entry) => {
-            // Prediction object stored directly
-            if (entry && typeof entry === "object" && ("crop" in entry || "district" in entry) && !("data" in entry)) {
-                return { savedAt: new Date().toISOString(), data: entry };
+            // Prediction object stored directly (with or without wrapper)
+            const looksLikeFlatPayload =
+                entry &&
+                typeof entry === "object" &&
+                !("data" in entry) &&
+                (
+                    "crop" in entry ||
+                    "district" in entry ||
+                    "Crop" in entry ||
+                    "District" in entry ||
+                    (entry.financials && typeof entry.financials === "object")
+                );
+            if (looksLikeFlatPayload) {
+                const savedAt = typeof entry.savedAt === "string" ? entry.savedAt : new Date().toISOString();
+                return { savedAt, data: normalizeStoredPrediction(entry) };
             }
 
             if (!entry || typeof entry !== "object") return null;
@@ -52,7 +90,7 @@ function loadHistory() {
             const savedAt = typeof entry.savedAt === "string" ? entry.savedAt : new Date().toISOString();
             if (!data || typeof data !== "object") return null;
 
-            return { savedAt, data };
+            return { savedAt, data: normalizeStoredPrediction(data) };
         }).filter(Boolean);
     } catch {
         return [];
@@ -66,7 +104,8 @@ function saveHistory(history) {
 }
 
 function persistPrediction(data) {
-    const json = JSON.stringify(data);
+    const normalized = normalizeStoredPrediction(data);
+    const json = JSON.stringify(normalized);
     try {
         sessionStorage.setItem(STORAGE_KEY, json);
     } catch { /* ignore */ }
@@ -75,11 +114,11 @@ function persistPrediction(data) {
     } catch { /* ignore */ }
 
     let hist = loadHistory();
-    const fp = historyFingerprint(data);
+    const fp = historyFingerprint(normalized);
     if (hist.length && historyFingerprint(hist[0].data) === fp) {
-        hist[0] = { savedAt: new Date().toISOString(), data };
+        hist[0] = { savedAt: new Date().toISOString(), data: normalized };
     } else {
-        hist.unshift({ savedAt: new Date().toISOString(), data });
+        hist.unshift({ savedAt: new Date().toISOString(), data: normalized });
     }
     hist = hist.slice(0, HISTORY_MAX);
     saveHistory(hist);
@@ -105,52 +144,74 @@ function renderPrevAdvisories(activeFp) {
     const list = document.getElementById("prev-searches-list");
     if (!section || !list) return;
 
-    const hist = loadHistory().filter(e => e?.data && typeof e.data === "object" && (e.data.crop || e.data.district));
+    const hist = loadHistory().filter(e => {
+        const d = normalizeStoredPrediction(e?.data);
+        return d && typeof d === "object" && (d.crop || d.district);
+    });
     if (!hist.length) {
         section.style.display = "none";
         list.innerHTML = "";
+        previousSectionData = null;
+        previousAdvisoryOptions = [];
         return;
     }
 
-    // Show only the immediately previous prediction (not the entire history).
-    // "Previous" is defined as: the most recent history entry that is NOT the current one.
     const fpActive = activeFp || (lastData ? historyFingerprint(lastData) : "");
-    const prevEntry = fpActive
-        ? (hist.find(e => historyFingerprint(e?.data) !== fpActive) || null)
-        : (hist[0] || null);
+    const entriesToShow = fpActive
+        ? hist.filter(e => historyFingerprint(e?.data) !== fpActive)
+        : hist.slice(0);
 
-    if (!prevEntry?.data) {
+    if (!entriesToShow.length) {
         section.style.display = "none";
         list.innerHTML = "";
+        previousSectionData = null;
+        previousAdvisoryOptions = [];
         return;
     }
 
     section.style.display = "block";
+    previousAdvisoryOptions = entriesToShow;
 
-    const d = prevEntry.data;
-    const label = `${d.crop || "—"} · ${d.district || "—"}`;
-    const sub = `${d.crop || "—"} · ${d.district || "—"} · ${d.season || "—"} · ${d.area_ha ?? "—"} ha`;
+    list.replaceChildren();
+    entriesToShow.forEach((entry, idx) => {
+        const d = normalizeStoredPrediction(entry.data);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "prev-search-chip notranslate" + (idx === 0 ? " is-active" : "");
+        btn.dataset.prevIdx = String(idx);
+        btn.setAttribute("role", "listitem");
+        btn.setAttribute("translate", "no");
 
-    list.innerHTML = `<div class="prev-search-chip is-readonly" role="listitem">
-        <span class="prev-chip-main">${escapeHtml(label)}</span>
-        <span class="prev-chip-meta">${escapeHtml(sub)} · ${escapeHtml(formatRelativeTime(prevEntry.savedAt))}</span>
-    </div>`;
+        const main = document.createElement("span");
+        main.className = "prev-chip-main";
+        main.textContent = advisoryMetaLine(d);
 
-    // Populate the full previous dashboard card previews
-    populatePreviousSection(d);
+        const meta = document.createElement("span");
+        meta.className = "prev-chip-meta";
+        const rel = formatRelativeTime(entry.savedAt);
+        meta.textContent = rel ? `Saved ${rel}` : "";
+
+        btn.append(main, meta);
+        list.appendChild(btn);
+    });
+
+    previousSectionData = normalizeStoredPrediction(entriesToShow[0].data);
+    populatePreviousSection(entriesToShow[0].data);
 }
 
 function populatePreviousSection(data) {
     if (!data) return;
-    const fin = data?.financials?.financial_summary || {};
-    const be  = data?.financials?.breakeven || {};
-    const wt  = data?.live_weather || {};
+    const d = normalizeStoredPrediction(data);
+    previousSectionData = d;
+    const fin = d?.financials?.financial_summary || {};
+    const be  = d?.financials?.breakeven || {};
+    const wt  = d?.live_weather || {};
 
     // Summary strip (previous)
     const elYield = document.getElementById("prev-strip-yield");
-    if (elYield) elYield.textContent = `${data.predicted_yield ?? "—"} t/ha`;
+    if (elYield) elYield.textContent = `${d.predicted_yield ?? "—"} t/ha`;
     const elRange = document.getElementById("prev-strip-yield-range");
-    if (elRange) elRange.textContent = `${data.min_yield ?? "—"} – ${data.max_yield ?? "—"} t/ha`;
+    if (elRange) elRange.textContent = `${d.min_yield ?? "—"} – ${d.max_yield ?? "—"} t/ha`;
     setColoredValue("prev-strip-profit", fin.expected_net_profit_inr ?? 0, true, true);
 
     const elRoi = document.getElementById("prev-strip-roi");
@@ -162,13 +223,13 @@ function populatePreviousSection(data) {
     const elTemp = document.getElementById("prev-strip-temp");
     if (elTemp) elTemp.textContent = `${wt.current_temp ?? "—"}°C`;
     const elConf = document.getElementById("prev-strip-confidence");
-    if (elConf) elConf.textContent = data.confidence ?? "—";
+    if (elConf) elConf.textContent = d.confidence ?? "—";
 
     // Card previews (previous)
     const pYield = document.getElementById("prev-preview-yield");
-    if (pYield) pYield.textContent = `${data.predicted_yield ?? "—"} t/ha`;
+    if (pYield) pYield.textContent = `${d.predicted_yield ?? "—"} t/ha`;
     const pYieldRange = document.getElementById("prev-preview-yield-range");
-    if (pYieldRange) pYieldRange.textContent = `Range: ${data.min_yield ?? "—"} – ${data.max_yield ?? "—"} t/ha`;
+    if (pYieldRange) pYieldRange.textContent = `Range: ${d.min_yield ?? "—"} – ${d.max_yield ?? "—"} t/ha`;
 
     const pProfit = document.getElementById("prev-preview-profit");
     if (pProfit) pProfit.textContent = formatINR(fin.expected_net_profit_inr);
@@ -178,18 +239,14 @@ function populatePreviousSection(data) {
     if (pWeather) pWeather.textContent = `${wt.current_temp ?? "—"}°C`;
     const pBe = document.getElementById("prev-preview-breakeven");
     if (pBe) pBe.textContent = `${be.breakeven_yield_per_ha ?? "—"} t/ha`;
-}
-
-function escapeHtml(s) {
-    if (s == null) return "";
-    const t = document.createElement("template");
-    t.textContent = String(s);
-    return t.innerHTML;
+    const pScenario = document.getElementById("prev-preview-scenario");
+    if (pScenario) pScenario.textContent = "3 Scenarios";
 }
 
 function applyHistoryEntry(data) {
-    lastData = data;
-    const json = JSON.stringify(data);
+    const d = normalizeStoredPrediction(data);
+    lastData = d;
+    const json = JSON.stringify(d);
     try {
         sessionStorage.setItem(STORAGE_KEY, json);
     } catch { /* ignore */ }
@@ -202,9 +259,9 @@ function applyHistoryEntry(data) {
     if (emptyState) emptyState.style.display = "none";
     if (dash) dash.style.display = "block";
 
-    populateAll(data);
-    showDashboard(data);
-    renderPrevAdvisories(historyFingerprint(data));
+    populateAll(d);
+    showDashboard(d);
+    renderPrevAdvisories(historyFingerprint(d));
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -243,6 +300,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Dashboard page: render from last prediction
     const dashboard = document.getElementById("dashboard-section");
     if (dashboard && !predictionForm) {
+        initPrevAdvisorySection();
         tryLoadDashboardFromStorage();
     }
 
@@ -429,8 +487,8 @@ async function handleSubmit(e) {
         });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
-        lastData = data;
-        persistPrediction(data);
+        lastData = normalizeStoredPrediction(data);
+        persistPrediction(lastData);
         window.location.href = "/dashboard";
     } catch (err) {
         alert("❌ Could not reach the backend.\n\nMake sure the API is running:\n  python -m uvicorn api:app --reload --port 8000\n\n" + err.message);
@@ -480,10 +538,11 @@ function tryLoadDashboardFromStorage() {
     }
     try {
         const data = JSON.parse(raw);
-        lastData = data;
-        populateAll(data);
-        showDashboard(data);
-        renderPrevAdvisories(historyFingerprint(data));
+        const d = normalizeStoredPrediction(data);
+        lastData = d;
+        populateAll(d);
+        showDashboard(d);
+        renderPrevAdvisories(historyFingerprint(d));
     } catch {
         const dash = document.getElementById("dashboard-section");
         const emptyState = document.getElementById("dashboard-empty-state");
@@ -502,18 +561,26 @@ function showDashboard(data) {
     const crop = data.crop;
     const dist = data.district;
     const subtitle = document.getElementById("dashboard-subtitle");
-    if (subtitle) subtitle.textContent = `${crop} · ${dist} · ${data.season} · ${data.area_ha} ha`;
+    let subtitleText = `${crop} · ${dist} · ${data.season} · ${data.area_ha} ha`;
+    if (data.area_ha === null || data.area_ha === undefined) {
+        subtitleText = `${crop} · ${dist} · ${data.season}`;
+    }
+    if (subtitle) subtitle.textContent = subtitleText;
 }
 
 // ── POPULATE ALL SECTIONS ─────────────────────────────────
 function populateAll(data) {
+    const d = normalizeStoredPrediction(data);
+    populateDashboardStripAndPreviews(d);
+    populateModalsFromData(d);
+}
+
+/** Summary strip + main dashboard card previews only (does not touch modals). */
+function populateDashboardStripAndPreviews(data) {
     const fin = data.financials.financial_summary;
     const be  = data.financials.breakeven;
-    const sc  = data.financials.scenarios;
-    const cd  = data.financials.cost_breakdown;
     const wt  = data.live_weather;
 
-    // Summary strip
     document.getElementById("strip-yield").textContent      = `${data.predicted_yield} t/ha`;
     const stripRange = document.getElementById("strip-yield-range");
     if (stripRange) stripRange.textContent = `${data.min_yield} – ${data.max_yield} t/ha`;
@@ -523,7 +590,6 @@ function populateAll(data) {
     document.getElementById("strip-temp").textContent       = `${wt.current_temp ?? "—"}°C`;
     document.getElementById("strip-confidence").textContent = data.confidence;
 
-    // Card previews
     document.getElementById("preview-yield").textContent    = `${data.predicted_yield} t/ha`;
     const prevRange = document.getElementById("preview-yield-range");
     if (prevRange) prevRange.textContent = `Range: ${data.min_yield} – ${data.max_yield} t/ha`;
@@ -531,103 +597,142 @@ function populateAll(data) {
     document.getElementById("preview-cost").textContent     = formatINR(fin.total_cost_inr);
     document.getElementById("preview-weather").textContent  = `${wt.current_temp ?? "—"}°C`;
     document.getElementById("preview-breakeven").textContent= `${be.breakeven_yield_per_ha} t/ha`;
+}
 
-    // ── YIELD MODAL ──────────────────────────────────────
+/** All modal bodies + charts (used for current data and when opening a previous-advisory card). */
+function populateModalsFromData(data) {
+    const d = normalizeStoredPrediction(data);
+    if (!d?.financials) return;
+
+    const fin = d.financials.financial_summary;
+    const be  = d.financials.breakeven;
+    const sc  = d.financials.scenarios;
+    const cd  = d.financials.cost_breakdown;
+    const wt  = d.live_weather || {};
+
     document.getElementById("yield-meta").textContent =
-        `${data.crop} · ${data.district} · ${data.season}`;
-    document.getElementById("res-yield").textContent    = `${data.predicted_yield}`;
-    document.getElementById("res-min-yield").textContent= `${data.min_yield}`;
-    document.getElementById("res-max-yield").textContent= `${data.max_yield}`;
-    document.getElementById("res-total-yield").textContent = `${data.total_predicted} t`;
-    document.getElementById("res-total-range").textContent = `${data.total_min} – ${data.total_max} tonnes`;
-    document.getElementById("res-category").textContent = data.yield_category;
-    document.getElementById("res-confidence").textContent = data.confidence;
-    setYieldGauge(data.min_yield, data.predicted_yield, data.max_yield);
+        `${d.crop} · ${d.district} · ${d.season}`;
+    document.getElementById("res-yield").textContent    = `${d.predicted_yield}`;
+    document.getElementById("res-min-yield").textContent= `${d.min_yield}`;
+    document.getElementById("res-max-yield").textContent= `${d.max_yield}`;
+    document.getElementById("res-total-yield").textContent = `${d.total_predicted} t`;
+    document.getElementById("res-total-range").textContent = `${d.total_min} – ${d.total_max} tonnes`;
+    document.getElementById("res-category").textContent = d.yield_category;
+    document.getElementById("res-confidence").textContent = d.confidence;
+    setYieldGauge(d.min_yield, d.predicted_yield, d.max_yield);
     document.getElementById("yield-insight").textContent =
-        `Predicted ${data.predicted_yield} t/ha is classified as ${data.yield_category} for ${data.crop} in Gujarat. ` +
-        `The 80% confidence interval spans ${data.min_yield}–${data.max_yield} t/ha.`;
+        `Predicted ${d.predicted_yield} t/ha is classified as ${d.yield_category} for ${d.crop} in Gujarat. ` +
+        `The 80% confidence interval spans ${d.min_yield}–${d.max_yield} t/ha.`;
 
-    // ── FINANCIAL MODAL ──────────────────────────────────
+    const mspStr = fin.market_price_per_tonne_inr != null
+        ? fin.market_price_per_tonne_inr.toLocaleString("en-IN")
+        : "—";
     document.getElementById("fin-meta").textContent =
-        `${data.crop} · ${data.area_ha} ha · Market price ₹${fin.market_price_per_tonne_inr.toLocaleString("en-IN")}/tonne`;
+        `${d.crop} · ${d.area_ha} ha · Market price ₹${mspStr}/tonne`;
     document.getElementById("res-cost").textContent    = formatINR(fin.total_cost_inr);
     document.getElementById("res-revenue").textContent = formatINR(fin.expected_gross_revenue_inr);
     setColoredValue("res-profit", fin.expected_net_profit_inr, true);
     setColoredValue("res-roi",    fin.expected_roi_percent, false, false, "%");
-    document.getElementById("res-msp").textContent     = `₹${fin.market_price_per_tonne_inr.toLocaleString("en-IN")}`;
-    document.getElementById("res-cost-ha").textContent = `₹${fin.cost_per_ha_inr.toLocaleString("en-IN")}`;
+    document.getElementById("res-msp").textContent     =
+        fin.market_price_per_tonne_inr != null ? `₹${fin.market_price_per_tonne_inr.toLocaleString("en-IN")}` : "₹—";
+    document.getElementById("res-cost-ha").textContent =
+        fin.cost_per_ha_inr != null ? `₹${fin.cost_per_ha_inr.toLocaleString("en-IN")}` : "₹—";
     document.getElementById("fin-insight").textContent =
-        `Based on ${data.crop} MSP/APMC rates (₹${fin.market_price_per_tonne_inr.toLocaleString("en-IN")}/tonne) and CACP cultivation costs for Gujarat.`;
+        `Based on ${d.crop} MSP/APMC rates (₹${mspStr}/tonne) and CACP cultivation costs for Gujarat.`;
     const alert = document.getElementById("breakeven-alert");
-    alert.style.display = fin.breakeven_risk_alert ? "block" : "none";
+    if (alert) alert.style.display = fin.breakeven_risk_alert ? "block" : "none";
 
-    // ── SCENARIO CARDS ────────────────────────────────────
-    fillScenario("pess", sc.pessimistic);
-    fillScenario("exp",  sc.expected);
-    fillScenario("opt",  sc.optimistic);
+    fillScenario("pess", sc?.pessimistic);
+    fillScenario("exp",  sc?.expected);
+    fillScenario("opt",  sc?.optimistic);
     renderScenarioChart(sc);
 
-    // ── WEATHER ──────────────────────────────────────────
-    document.getElementById("res-district").textContent   = data.district;
+    document.getElementById("res-district").textContent   = d.district;
     document.getElementById("w-temp-big").textContent     = `${wt.current_temp ?? "—"}°C`;
     document.getElementById("w-min-temp").textContent     = `${wt.min_temp ?? "—"}°C`;
     document.getElementById("w-max-temp").textContent     = `${wt.max_temp ?? "—"}°C`;
     document.getElementById("w-hum").textContent          = `${wt.humidity_avg ?? "—"}%`;
     document.getElementById("w-rain").textContent         = `${wt.current_rain_mm ?? 0} mm/h`;
 
-    // ── COST BREAKDOWN ────────────────────────────────────
     document.getElementById("cost-meta").textContent =
-        `Total: ${formatINR(fin.total_cost_inr)} for ${data.area_ha} ha of ${data.crop}`;
+        `Total: ${formatINR(fin.total_cost_inr)} for ${d.area_ha} ha of ${d.crop}`;
     renderCostTable(cd, fin.total_cost_inr);
     renderCostChart(cd);
 
-    // ── BREAKEVEN ─────────────────────────────────────────
     document.getElementById("res-breakeven-yield").textContent = `${be.breakeven_yield_per_ha} t/ha`;
-    document.getElementById("res-pred-yield-be").textContent   = `${data.predicted_yield} t/ha`;
+    document.getElementById("res-pred-yield-be").textContent   = `${d.predicted_yield} t/ha`;
     document.getElementById("res-margin").textContent          = `${be.margin_above_breakeven_tha} t/ha`;
     document.getElementById("res-breakeven-prod").textContent  = `${be.breakeven_production_t} tonnes`;
-    renderBeBar(be.breakeven_yield_per_ha, data.predicted_yield, data.max_yield);
+    renderBeBar(be.breakeven_yield_per_ha, d.predicted_yield, d.max_yield);
     const risk = be.breakeven_risk;
     document.getElementById("be-insight-text").textContent = risk
         ? "\u26a0\ufe0f Your predicted yield is dangerously close to the breakeven threshold. Consider reducing input costs or boosting irrigation."
-        : `\u2705 Your predicted yield (${data.predicted_yield} t/ha) is ${be.margin_above_breakeven_tha} t/ha above the breakeven point. You are in the profit zone.`;
+        : `\u2705 Your predicted yield (${d.predicted_yield} t/ha) is ${be.margin_above_breakeven_tha} t/ha above the breakeven point. You are in the profit zone.`;
     document.getElementById("be-box-risk").className = "data-box " + (risk ? "highlight-red" : "highlight-green");
 
-    // ── FULL REPORT MODAL ─────────────────────────────────
-    populateReportModal(data);
+    populateReportModal(d);
+}
+
+/** Click chips + previous cards: open modals for the selected stored advisory. */
+function initPrevAdvisorySection() {
+    const section = document.getElementById("prev-advisory-section");
+    if (!section || section.dataset.prevInit === "1") return;
+    section.dataset.prevInit = "1";
+
+    section.addEventListener("click", (e) => {
+        const chip = e.target.closest(".prev-search-chip[data-prev-idx]");
+        if (chip) {
+            const idx = parseInt(chip.getAttribute("data-prev-idx"), 10);
+            const entry = previousAdvisoryOptions[idx];
+            if (entry?.data) {
+                previousSectionData = normalizeStoredPrediction(entry.data);
+                populatePreviousSection(entry.data);
+                section.querySelectorAll(".prev-search-chip").forEach(c => c.classList.remove("is-active"));
+                chip.classList.add("is-active");
+            }
+            return;
+        }
+
+        const card = e.target.closest(".prev-card[data-advisory-modal]");
+        if (card && previousSectionData) {
+            const mid = card.getAttribute("data-advisory-modal");
+            if (mid) openAdvisoryModal(mid, previousSectionData);
+        }
+    });
 }
 
 // ── FULL REPORT MODAL POPULATION ─────────────────────────
 function populateReportModal(data) {
     if (!data) return;
+    const d = normalizeStoredPrediction(data);
 
-    const fin = data?.financials?.financial_summary || {};
-    const be  = data?.financials?.breakeven        || {};
-    const sc  = data?.financials?.scenarios        || {};
-    const cd  = data?.financials?.cost_breakdown   || {};
-    const wt  = data?.live_weather                 || {};
-    const area = parseFloat(data.area_ha) || 1;
+    const fin = d?.financials?.financial_summary || {};
+    const be  = d?.financials?.breakeven        || {};
+    const sc  = d?.financials?.scenarios        || {};
+    const cd  = d?.financials?.cost_breakdown   || {};
+    const wt  = d?.live_weather                 || {};
+    const area = parseFloat(d.area_ha) || 1;
 
-    // Meta header
-    setText('report-meta', `${data.crop || '—'} · ${data.district || '—'} · ${data.season || '—'} · ${data.area_ha || '—'} ha`);
+    // Meta header (must match advisory list chips — advisoryMetaLine)
+    setText('report-meta', advisoryMetaLine(d));
 
     // ─ Yield ────────────────────────────────────────────────
-const minY  = data.min_yield        ?? '—';
-    const predY = data.predicted_yield  ?? '—';
-    const maxY  = data.max_yield        ?? '—';
+const minY  = d.min_yield        ?? '—';
+    const predY = d.predicted_yield  ?? '—';
+    const maxY  = d.max_yield        ?? '—';
     setText('rpt-min-yield',  `${minY} t/ha`);
     setText('rpt-pred-yield', `${predY} t/ha`);
     setText('rpt-max-yield',  `${maxY} t/ha`);
     const minTot  = (typeof minY  === 'number') ? (minY  * area).toFixed(2) : '—';
-    const predTot = data.total_predicted ?? ((typeof predY === 'number') ? (predY * area).toFixed(2) : '—');
+    const predTot = d.total_predicted ?? ((typeof predY === 'number') ? (predY * area).toFixed(2) : '—');
     const maxTot  = (typeof maxY  === 'number') ? (maxY  * area).toFixed(2) : '—';
     setText('rpt-min-total',  `${minTot} tonnes total`);
     setText('rpt-pred-total', `${predTot} tonnes total`);
     setText('rpt-max-total',  `${maxTot} tonnes total`);
-    setText('rpt-yield-cat',  data.yield_category  || '—');
-    setText('rpt-confidence', data.confidence      || '—');
-    const totalMin = data.total_min ?? minTot;
-    const totalMax = data.total_max ?? maxTot;
+    setText('rpt-yield-cat',  d.yield_category  || '—');
+    setText('rpt-confidence', d.confidence      || '—');
+    const totalMin = d.total_min ?? minTot;
+    const totalMax = d.total_max ?? maxTot;
     setText('rpt-prod-range', `${totalMin} – ${totalMax} t`);
 
     // ─ Financials ───────────────────────────────────────────
@@ -652,27 +757,31 @@ const minY  = data.min_yield        ?? '—';
 
     // ─ Cost breakdown table ───────────────────────────────
     const ct = document.getElementById('rpt-cost-table');
-    if (ct && cd && Object.keys(cd).length) {
-        const max = Math.max(...Object.values(cd));
-        ct.innerHTML = Object.entries(cd).map(([label, amount]) => {
-            const pct = Math.round((amount / max) * 100);
-            return `<div class="cost-row">
+    if (ct) {
+        if (cd && Object.keys(cd).length) {
+            const max = Math.max(...Object.values(cd));
+            ct.innerHTML = Object.entries(cd).map(([label, amount]) => {
+                const pct = Math.round((amount / max) * 100);
+                return `<div class="cost-row">
                 <span class="cost-row-label">${label}</span>
                 <div class="cost-row-bar"><div class="cost-row-fill" style="width:${pct}%"></div></div>
                 <span class="cost-row-amount">₹${amount.toLocaleString('en-IN', {maximumFractionDigits:0})}</span>
             </div>`;
-        }).join('');
+            }).join('');
+        } else {
+            ct.innerHTML = "";
+        }
     }
 
     // ─ Breakeven ────────────────────────────────────────────
     setText('rpt-be-yield',  be.breakeven_yield_per_ha    ? `${be.breakeven_yield_per_ha} t/ha`    : '—');
-    setText('rpt-be-pred',   data.predicted_yield          ? `${data.predicted_yield} t/ha`         : '—');
+    setText('rpt-be-pred',   d.predicted_yield          ? `${d.predicted_yield} t/ha`         : '—');
     setText('rpt-be-margin', be.margin_above_breakeven_tha ? `${be.margin_above_breakeven_tha} t/ha` : '—');
     const beBox = document.getElementById('rpt-be-box');
     if (beBox) beBox.className = 'data-box ' + (be.breakeven_risk ? 'highlight-red' : 'highlight-green');
 
     // ─ Weather ───────────────────────────────────────────────
-setText('rpt-district', data.district || '—');
+setText('rpt-district', d.district || '—');
     setText('rpt-temp', wt.current_temp  != null ? `${wt.current_temp}°C`   : '—');
     setText('rpt-hum',  wt.humidity_avg  != null ? `${wt.humidity_avg}%`    : '—');
     setText('rpt-rain', wt.current_rain_mm != null ? `${wt.current_rain_mm} mm/h` : '—');
@@ -699,9 +808,18 @@ function setColoredValue(id, val, rupee = false, large = false, suffix = "") {
 }
 
 function fillScenario(key, sc) {
-    document.getElementById(`sc-${key}-assumption`).textContent = sc.assumptions;
-    document.getElementById(`sc-${key}-profit`).textContent     = formatINR(sc.net_profit_inr);
-    document.getElementById(`sc-${key}-roi`).textContent        = `ROI: ${sc.roi_percent}%`;
+    const a = document.getElementById(`sc-${key}-assumption`);
+    const p = document.getElementById(`sc-${key}-profit`);
+    const r = document.getElementById(`sc-${key}-roi`);
+    if (!sc) {
+        if (a) a.textContent = "—";
+        if (p) p.textContent = formatINR(null);
+        if (r) r.textContent = "ROI: —%";
+        return;
+    }
+    if (a) a.textContent = sc.assumptions ?? "—";
+    if (p) p.textContent = formatINR(sc.net_profit_inr);
+    if (r) r.textContent = `ROI: ${sc.roi_percent ?? "—"}%`;
 }
 
 // ── YIELD GAUGE ───────────────────────────────────────────
@@ -724,6 +842,11 @@ function renderBeBar(breakeven, predicted, maxY) {
 // ── COST TABLE ────────────────────────────────────────────
 function renderCostTable(breakdown, total) {
     const container = document.getElementById("cost-table");
+    if (!container) return;
+    if (!breakdown || typeof breakdown !== "object" || !Object.keys(breakdown).length) {
+        container.innerHTML = "";
+        return;
+    }
     const max = Math.max(...Object.values(breakdown));
     container.innerHTML = Object.entries(breakdown).map(([label, amount]) => {
         const pct = Math.round((amount / max) * 100);
@@ -737,13 +860,27 @@ function renderCostTable(breakdown, total) {
 
 // ── CHARTS ────────────────────────────────────────────────
 function renderScenarioChart(sc) {
-    const ctx = document.getElementById("scenarioChart").getContext("2d");
+    const canvas = document.getElementById("scenarioChart");
+    if (!canvas) return;
+    if (!sc?.pessimistic || !sc?.expected || !sc?.optimistic) {
+        if (scenarioChart) {
+            scenarioChart.destroy();
+            scenarioChart = null;
+        }
+        return;
+    }
+    const ctx = canvas.getContext("2d");
     if (scenarioChart) scenarioChart.destroy();
 
     const labels = ["Pessimistic", "Expected", "Optimistic"];
-    const values = [sc.pessimistic.net_profit_inr, sc.expected.net_profit_inr, sc.optimistic.net_profit_inr];
-    const colors = values.map(v => v < 0 ? "rgba(239,83,80,0.75)" : v === sc.expected.net_profit_inr ? "rgba(232,160,32,0.75)" : "rgba(76,175,120,0.75)");
-    const borders= values.map(v => v < 0 ? "#ef5350" : v === sc.expected.net_profit_inr ? "#e8a020" : "#4caf78");
+    const values = [
+        sc.pessimistic.net_profit_inr ?? 0,
+        sc.expected.net_profit_inr ?? 0,
+        sc.optimistic.net_profit_inr ?? 0,
+    ];
+    const expVal = sc.expected.net_profit_inr ?? 0;
+    const colors = values.map(v => v < 0 ? "rgba(239,83,80,0.75)" : v === expVal ? "rgba(232,160,32,0.75)" : "rgba(76,175,120,0.75)");
+    const borders= values.map(v => v < 0 ? "#ef5350" : v === expVal ? "#e8a020" : "#4caf78");
 
     scenarioChart = new Chart(ctx, {
         type: "bar",
@@ -773,7 +910,16 @@ function renderScenarioChart(sc) {
 }
 
 function renderCostChart(breakdown) {
-    const ctx = document.getElementById("costChart").getContext("2d");
+    const canvas = document.getElementById("costChart");
+    if (!canvas) return;
+    if (!breakdown || typeof breakdown !== "object" || !Object.keys(breakdown).length) {
+        if (costChart) {
+            costChart.destroy();
+            costChart = null;
+        }
+        return;
+    }
+    const ctx = canvas.getContext("2d");
     if (costChart) costChart.destroy();
     const palette = ["#e8a020","#c47c1a","#f5d06a","#ff9800","#4caf78","#42a5f5"];
     costChart = new Chart(ctx, {
@@ -800,11 +946,20 @@ function renderCostChart(breakdown) {
 
 
 // ── MODAL HELPERS ─────────────────────────────────────────
-function openModal(id) {
-    // Re-populate report modal fresh every time it is opened
-    if (id === 'report-modal' && lastData) {
-        try { populateReportModal(lastData); } catch(e) { console.error('Report modal error:', e); }
+/** Repopulate modal/chart DOM from a prediction object, then show the modal. Omit `data` to use the current dashboard run. */
+function openAdvisoryModal(modalId, data) {
+    const src = (arguments.length >= 2 && data != null) ? data : lastData;
+    if (!src || !modalId) return;
+    try {
+        populateModalsFromData(src);
+    } catch (err) {
+        console.error(err);
+        return;
     }
-    document.getElementById(id)?.classList.add('active');
+    document.getElementById(modalId)?.classList.add("active");
 }
-function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
+
+function openModal(id) {
+    document.getElementById(id)?.classList.add("active");
+}
+function closeModal(id) { document.getElementById(id)?.classList.remove("active"); }

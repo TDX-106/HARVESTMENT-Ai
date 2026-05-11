@@ -6,7 +6,7 @@
     <title>Harvestment | Dashboard</title>
     <meta name="description" content="Harvestment dashboard showing yield prediction, financial advisory, scenarios, weather and breakeven analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=18">
+    <link rel="stylesheet" href="/styles.css?v=20">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
@@ -148,7 +148,7 @@
             <!-- Cards Grid -->
             <div class="cards-grid">
                 <!-- Yield Card -->
-                <div class="feature-card" id="card-yield" onclick="openModal('yield-modal')">
+                <div class="feature-card" id="card-yield" onclick="openAdvisoryModal('yield-modal')">
                     <div class="card-glow card-glow-gold"></div>
                     <div class="card-icon"><i class="ph-duotone ph-leaf"></i></div>
                     <h3>Yield Prediction</h3>
@@ -159,7 +159,7 @@
                 </div>
 
                 <!-- Financial Card -->
-                <div class="feature-card" id="card-financial" onclick="openModal('financial-modal')">
+                <div class="feature-card" id="card-financial" onclick="openAdvisoryModal('financial-modal')">
                     <div class="card-glow card-glow-green"></div>
                     <div class="card-icon" style="color:#4caf78;"><i class="ph-duotone ph-currency-inr"></i></div>
                     <h3>Financial Advisory</h3>
@@ -169,7 +169,7 @@
                 </div>
 
                 <!-- Scenarios Card -->
-                <div class="feature-card" id="card-scenario" onclick="openModal('scenario-modal')">
+                <div class="feature-card" id="card-scenario" onclick="openAdvisoryModal('scenario-modal')">
                     <div class="card-glow card-glow-blue"></div>
                     <div class="card-icon" style="color:#7986cb;"><i class="ph-duotone ph-chart-bar"></i></div>
                     <h3>Scenario Planning</h3>
@@ -179,7 +179,7 @@
                 </div>
 
                 <!-- Weather Card -->
-                <div class="feature-card" id="card-weather" onclick="openModal('weather-modal')">
+                <div class="feature-card" id="card-weather" onclick="openAdvisoryModal('weather-modal')">
                     <div class="card-glow card-glow-sky"></div>
                     <div class="card-icon" style="color:#42a5f5;"><i class="ph-duotone ph-cloud-sun"></i></div>
                     <h3>Live Weather</h3>
@@ -189,7 +189,7 @@
                 </div>
 
                 <!-- Cost Breakdown Card -->
-                <div class="feature-card" id="card-cost" onclick="openModal('cost-modal')">
+                <div class="feature-card" id="card-cost" onclick="openAdvisoryModal('cost-modal')">
                     <div class="card-glow card-glow-amber"></div>
                     <div class="card-icon" style="color:#ff9800;"><i class="ph-duotone ph-receipt"></i></div>
                     <h3>Cost Breakdown</h3>
@@ -199,7 +199,7 @@
                 </div>
 
                 <!-- Breakeven Card -->
-                <div class="feature-card" id="card-breakeven" onclick="openModal('breakeven-modal')">
+                <div class="feature-card" id="card-breakeven" onclick="openAdvisoryModal('breakeven-modal')">
                     <div class="card-glow card-glow-red"></div>
                     <div class="card-icon" style="color:#ef5350;"><i class="ph-duotone ph-scales"></i></div>
                     <h3>Breakeven Analysis</h3>
@@ -209,18 +209,18 @@
                 </div>
 
                 <!-- Full Report Card -->
-                <div class="feature-card" id="card-report" onclick="openModal('report-modal')" style="border-color:rgba(232,160,32,0.3);">
+                <div class="feature-card" id="card-report" onclick="openAdvisoryModal('report-modal')" style="border-color:rgba(232,160,32,0.3);">
                     <div class="card-glow card-glow-gold"></div>
                     <div class="card-icon" style="background:linear-gradient(135deg,rgba(232,160,32,0.18),rgba(232,160,32,0.04));border-color:rgba(232,160,32,0.3);"><i class="ph-duotone ph-file-text" style="color:var(--gold);"></i></div>
                     <h3>Full Report</h3>
                     <p>Complete advisory summary — all predictions, financials, scenarios and weather in one view.</p>
                     <div class="card-preview" style="color:var(--gold);font-size:1rem;font-weight:700;">View All Results</div>
-                    <span class="card-action" style="color:var(--gold);">Open Report <i class="ph-bold ph-arrow-right" style="margin-left:4px;"></i></span>
+                    <span class="card-action" >Open Report <i class="ph-bold ph-arrow-right" style="margin-left:4px;"></i></span>
                 </div>
             </div>
 
             <!-- Previous advisory -->
-            <section class="prev-advisory-wrap" id="prev-advisory-section" style="display:none;" aria-label="Previous advisory">
+            <section class="prev-advisory-wrap notranslate" id="prev-advisory-section" style="display:none;" aria-label="Previous advisory">
                 <div class="prev-searches-panel">
                     <div class="prev-searches-head">
                         <h3 class="prev-searches-title"><i class="ph-bold ph-clock-counter-clockwise"></i> Previous advisory</h3>
@@ -259,53 +259,68 @@
 
                     <!-- Previous cards grid (read-only) -->
                     <div class="cards-grid prev-cards-grid">
-                        <div class="feature-card prev-card" id="prev-card-yield">
+                        <div class="feature-card prev-card" id="prev-card-yield" data-advisory-modal="yield-modal">
                             <div class="card-glow card-glow-gold"></div>
                             <div class="card-icon"><i class="ph-duotone ph-leaf"></i></div>
                             <h3>Yield Prediction</h3>
                             <p>Previous run — predicted harvest quantity with confidence bands.</p>
                             <div class="card-preview" id="prev-preview-yield">— t/ha</div>
                             <div id="prev-preview-yield-range" style="font-size:0.78rem;color:var(--muted);margin-top:-10px;margin-bottom:14px;"></div>
+                            <span class="card-action">View Details <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                         </div>
 
-                        <div class="feature-card prev-card" id="prev-card-financial">
+                        <div class="feature-card prev-card" id="prev-card-financial" data-advisory-modal="financial-modal">
                             <div class="card-glow card-glow-green"></div>
                             <div class="card-icon" style="color:#4caf78;"><i class="ph-duotone ph-currency-inr"></i></div>
                             <h3>Financial Advisory</h3>
                             <p>Previous run — net profit, ROI, cost and revenue snapshot.</p>
                             <div class="card-preview" id="prev-preview-profit">₹ —</div>
+                            <span class="card-action">View Details <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                         </div>
 
-                        <div class="feature-card prev-card" id="prev-card-scenario">
+                        <div class="feature-card prev-card" id="prev-card-scenario" data-advisory-modal="scenario-modal">
                             <div class="card-glow card-glow-blue"></div>
                             <div class="card-icon" style="color:#7986cb;"><i class="ph-duotone ph-chart-bar"></i></div>
                             <h3>Scenario Planning</h3>
                             <p>Previous run — pessimistic, expected, optimistic outcomes.</p>
                             <div class="card-preview" id="prev-preview-scenario">3 Scenarios</div>
+                            <span class="card-action">View Chart <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                         </div>
 
-                        <div class="feature-card prev-card" id="prev-card-weather">
+                        <div class="feature-card prev-card" id="prev-card-weather" data-advisory-modal="weather-modal">
                             <div class="card-glow card-glow-sky"></div>
                             <div class="card-icon" style="color:#42a5f5;"><i class="ph-duotone ph-cloud-sun"></i></div>
                             <h3>Live Weather</h3>
                             <p>Previous run — captured live weather snapshot.</p>
                             <div class="card-preview" id="prev-preview-weather">—°C</div>
+                            <span class="card-action">View Details <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                         </div>
 
-                        <div class="feature-card prev-card" id="prev-card-cost">
+                        <div class="feature-card prev-card" id="prev-card-cost" data-advisory-modal="cost-modal">
                             <div class="card-glow card-glow-amber"></div>
                             <div class="card-icon" style="color:#ff9800;"><i class="ph-duotone ph-receipt"></i></div>
                             <h3>Cost Breakdown</h3>
                             <p>Previous run — total cultivation cost estimate.</p>
                             <div class="card-preview" id="prev-preview-cost">₹ —</div>
+                            <span class="card-action">View Breakdown <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
                         </div>
 
-                        <div class="feature-card prev-card" id="prev-card-breakeven">
+                        <div class="feature-card prev-card" id="prev-card-breakeven" data-advisory-modal="breakeven-modal">
                             <div class="card-glow card-glow-red"></div>
                             <div class="card-icon" style="color:#ef5350;"><i class="ph-duotone ph-scales"></i></div>
                             <h3>Breakeven Analysis</h3>
                             <p>Previous run — minimum yield required to cover costs.</p>
                             <div class="card-preview" id="prev-preview-breakeven">— t/ha</div>
+                            <span class="card-action">View Analysis <i class="ph-bold ph-arrow-right" style="margin-left: 4px;"></i></span>
+                        </div>
+
+                        <div class="feature-card prev-card" id="prev-card-report" data-advisory-modal="report-modal" style="border-color:rgba(232,160,32,0.3);">
+                            <div class="card-glow card-glow-gold"></div>
+                            <div class="card-icon" style="background:linear-gradient(135deg,rgba(232,160,32,0.18),rgba(232,160,32,0.04));border-color:rgba(232,160,32,0.3);"><i class="ph-duotone ph-file-text" style="color:var(--gold);"></i></div>
+                            <h3>Full Report</h3>
+                            <p>Previous run — full summary for that advisory.</p>
+                            <div class="card-preview" style="color:var(--gold);font-size:1rem;font-weight:700;">View All Results</div>
+                            <span class="card-action">Open Report <i class="ph-bold ph-arrow-right" style="margin-left:4px;"></i></span>
                         </div>
                     </div>
                 </div>
@@ -701,7 +716,7 @@
         }
     </script>
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-    <script src="app.js?v=21"></script>
+    <script src="app.js?v=24"></script>
     <script>
         document.getElementById('footer-year')?.append(new Date().getFullYear());
     </script>
